@@ -12,6 +12,8 @@ export default function MotorControl({
   fullThreshold = 90,
   probeTop = false,
   isSubmitting = false,
+  manualOverride = false,
+  onToggleManualOverride = () => {},
   onToggle = () => {},
   onSimulateFault = () => {},
 }) {
@@ -20,7 +22,7 @@ export default function MotorControl({
   const [autoStopCountdown, setAutoStopCountdown] = useState(null); // in seconds
 
   const isFull = probeTop || waterLevel >= fullThreshold;
-  const isBlocked = isFull || motorFault;
+  const isBlocked = !manualOverride && (isFull || motorFault);
 
   // Track run duration & auto-stop timer when active
   useEffect(() => {
@@ -32,7 +34,7 @@ export default function MotorControl({
         setAutoStopCountdown((prevCountdown) => {
           if (prevCountdown !== null) {
             if (prevCountdown <= 1) {
-              onToggle("OFF");
+              onToggle("OFF", manualOverride);
               return null;
             }
             return prevCountdown - 1;
@@ -45,7 +47,7 @@ export default function MotorControl({
       setAutoStopCountdown(null);
     }
     return () => clearInterval(timer);
-  }, [motorRunning, onToggle]);
+  }, [motorRunning, onToggle, manualOverride]);
 
   const formatTimer = (totalSec) => {
     const m = Math.floor(totalSec / 60);
@@ -57,14 +59,14 @@ export default function MotorControl({
     if (isSubmitting) return;
     const nextCommand = motorRunning ? "OFF" : "ON";
     setAutoStopCountdown(null);
-    onToggle(nextCommand);
+    onToggle(nextCommand, manualOverride);
   };
 
   const handleQuickTopUp = (minutes) => {
     if (isSubmitting || isBlocked) return;
     setAutoStopCountdown(minutes * 60);
     if (!motorRunning) {
-      onToggle("ON");
+      onToggle("ON", manualOverride);
     }
   };
 
@@ -81,6 +83,8 @@ export default function MotorControl({
               ? autoStopCountdown !== null
                 ? `Auto-Stop in ${formatTimer(autoStopCountdown)} • Total: ${formatTimer(elapsedSeconds)}`
                 : `Active & Pumping (${formatTimer(elapsedSeconds)})`
+              : manualOverride
+              ? "⚡ Manual Override Active • Turn on/off at will"
               : "Pump is idle • Automatic safety guards active"}
           </Text>
         </View>
@@ -93,8 +97,25 @@ export default function MotorControl({
         </View>
       </View>
 
-      {/* Safety Notice Banners */}
-      {motorFault && (
+      {/* Safety Notice or Manual Override Banners */}
+      {manualOverride ? (
+        <View style={styles.overrideActiveBanner}>
+          <Text style={styles.bannerIcon}>⚡</Text>
+          <View style={styles.bannerTextCol}>
+            <Text style={styles.bannerTitle}>Manual Override Mode Active</Text>
+            <Text style={styles.bannerDesc}>
+              Safety cutoffs are bypassed. You can start or stop the pump at any water level.
+            </Text>
+            <TouchableOpacity
+              style={styles.restoreBtn}
+              onPress={() => onToggleManualOverride(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.restoreBtnText}>Restore Auto-Protection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : motorFault ? (
         <View style={styles.faultBanner}>
           <Text style={styles.bannerIcon}>⚠️</Text>
           <View style={styles.bannerTextCol}>
@@ -111,19 +132,24 @@ export default function MotorControl({
             </TouchableOpacity>
           </View>
         </View>
-      )}
-
-      {isFull && !motorFault && (
+      ) : isFull ? (
         <View style={styles.fullBanner}>
           <Text style={styles.bannerIcon}>🛡️</Text>
           <View style={styles.bannerTextCol}>
-            <Text style={styles.bannerTitle}>Automatic Full-Tank Protection</Text>
+            <Text style={styles.bannerTitle}>Automatic Full-Tank Cut-Off</Text>
             <Text style={styles.bannerDesc}>
-              Tank is full. Motor is locked off to prevent water overflow.
+              Tank reached capacity (≥90%). Auto-lockout is engaged to prevent overflow.
             </Text>
+            <TouchableOpacity
+              style={styles.overrideLinkBtn}
+              onPress={() => onToggleManualOverride(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.overrideLinkText}>⚡ Turn On Manual Override</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      )}
+      ) : null}
 
       {/* Main Action Button - SOLID BLACK with WHITE TEXT */}
       <View style={styles.buttonContainer}>
@@ -144,7 +170,13 @@ export default function MotorControl({
               <View style={styles.btnTitleRow}>
                 <Text style={styles.btnIconText}>{motorRunning ? "⏹" : "▶"}</Text>
                 <Text style={styles.btnMainText}>
-                  {motorRunning ? "STOP WATER PUMP" : "START WATER PUMP"}
+                  {motorRunning
+                    ? manualOverride
+                      ? "STOP WATER PUMP (OVERRIDE)"
+                      : "STOP WATER PUMP"
+                    : manualOverride
+                    ? "START WATER PUMP (OVERRIDE)"
+                    : "START WATER PUMP"}
                 </Text>
               </View>
               <Text style={styles.btnSubText}>
@@ -152,8 +184,10 @@ export default function MotorControl({
                   ? autoStopCountdown !== null
                     ? `Auto-stopping in ${formatTimer(autoStopCountdown)} • Tap to stop now`
                     : "Pump running • Tap to safely stop immediately"
+                  : manualOverride
+                  ? "Manual override active • Tap to start pumping water"
                   : isBlocked
-                  ? "Turn on locked while tank is full"
+                  ? "Turn on locked while tank is full • Use override to test"
                   : "Tap to begin pumping water into tank"}
               </Text>
             </View>
@@ -371,6 +405,15 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
   },
+  overrideActiveBanner: {
+    flexDirection: "row",
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
   bannerIcon: {
     fontSize: 20,
     marginRight: 10,
@@ -401,6 +444,32 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "700",
+  },
+  overrideLinkBtn: {
+    backgroundColor: "#000000",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  overrideLinkText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  restoreBtn: {
+    backgroundColor: "#000000",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  restoreBtnText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   buttonContainer: {
     marginVertical: 4,

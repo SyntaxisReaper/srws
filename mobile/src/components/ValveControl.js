@@ -6,15 +6,18 @@ export default function ValveControl({
   waterLevel = 60,
   probeTop = false,
   isSubmitting = false,
+  manualOverride = false,
+  onToggleManualOverride = () => {},
   onToggleValve = () => {},
 }) {
   const isOpen = valveState === "OPEN";
   const isFull = probeTop || waterLevel >= 90;
+  const isBlocked = !manualOverride && isFull;
 
   const handlePress = () => {
     if (isSubmitting) return;
     const nextCommand = isOpen ? "CLOSED" : "OPEN";
-    onToggleValve(nextCommand);
+    onToggleValve(nextCommand, manualOverride);
   };
 
   return (
@@ -26,6 +29,8 @@ export default function ValveControl({
           <Text style={styles.cardSubtitle}>
             {isOpen
               ? "Inlet valve is OPEN • Municipal water flowing in"
+              : manualOverride
+              ? "⚡ Manual Override Active • You can open or close anytime"
               : "Inlet valve is CLOSED • City supply shut"}
           </Text>
         </View>
@@ -38,15 +43,39 @@ export default function ValveControl({
         </View>
       </View>
 
-      {/* Auto-Close Notice on Full Tank */}
-      {isFull && (
+      {/* Manual Override Active or Full-Tank Lockout Banner */}
+      {manualOverride ? (
+        <View style={styles.overrideBanner}>
+          <Text style={styles.lockoutIcon}>⚡</Text>
+          <View style={styles.overrideTextCol}>
+            <Text style={styles.overrideTitle}>Manual Override Mode Active</Text>
+            <Text style={styles.overrideSub}>
+              Safety cutoffs bypassed. You can open or close the valve anytime.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.restoreBtn}
+            onPress={() => onToggleManualOverride(false)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.restoreBtnText}>Restore Auto</Text>
+          </TouchableOpacity>
+        </View>
+      ) : isFull ? (
         <View style={styles.lockoutBanner}>
           <Text style={styles.lockoutIcon}>🛡️</Text>
           <Text style={styles.lockoutText}>
             Supply locked: Tank is full. Valve remains shut to prevent overflow.
           </Text>
+          <TouchableOpacity
+            style={styles.overrideBtn}
+            onPress={() => onToggleManualOverride(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.overrideBtnText}>⚡ Override</Text>
+          </TouchableOpacity>
         </View>
-      )}
+      ) : null}
 
       {/* Simplified Flow Graphic with Wave Indicator */}
       <View style={styles.flowGraphicRow}>
@@ -78,10 +107,10 @@ export default function ValveControl({
         <TouchableOpacity
           style={[
             styles.mainButton,
-            isFull && !isOpen && styles.btnDisabled,
+            isBlocked && !isOpen && styles.btnDisabled,
           ]}
           onPress={handlePress}
-          disabled={isSubmitting || (isFull && !isOpen)}
+          disabled={isSubmitting || (isBlocked && !isOpen)}
           activeOpacity={0.85}
         >
           {isSubmitting ? (
@@ -91,14 +120,22 @@ export default function ValveControl({
               <View style={styles.btnTitleRow}>
                 <Text style={styles.btnIconText}>{isOpen ? "🛑" : "💧"}</Text>
                 <Text style={styles.btnMainText}>
-                  {isOpen ? "CLOSE WATER VALVE" : "OPEN WATER VALVE"}
+                  {isOpen
+                    ? manualOverride
+                      ? "CLOSE WATER VALVE (OVERRIDE)"
+                      : "CLOSE WATER VALVE"
+                    : manualOverride
+                    ? "OPEN WATER VALVE (OVERRIDE)"
+                    : "OPEN WATER VALVE"}
                 </Text>
               </View>
               <Text style={styles.btnSubText}>
                 {isOpen
                   ? "Tap to shut off incoming municipal water"
+                  : manualOverride
+                  ? "Manual override active • Tap to open supply valve"
                   : isFull
-                  ? "Valve locked while tank is full"
+                  ? "Valve locked while tank is full • Tap override to open"
                   : "Tap to allow incoming municipal water"}
               </Text>
             </View>
@@ -202,6 +239,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "500",
+  },
+  overrideBtn: {
+    backgroundColor: "#000000",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  overrideBtnText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  overrideBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFBEB",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  overrideTextCol: {
+    flex: 1,
+  },
+  overrideTitle: {
+    color: "#92400E",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  overrideSub: {
+    color: "#78350F",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  restoreBtn: {
+    backgroundColor: "#000000",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  restoreBtnText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
   },
   flowGraphicRow: {
     flexDirection: "row",

@@ -58,6 +58,7 @@ export default function App() {
     clearError,
     toggleMotor,
     toggleValve,
+    setManualOverride,
     simulateFault,
     changeWaterLevel,
     saveSchedule,
@@ -71,14 +72,37 @@ export default function App() {
     }, 2600);
   };
 
-  const handleToggleMotor = (nextCmd) => {
-    toggleMotor(nextCmd);
-    showToast(nextCmd === "ON" ? "⚡ Water pump started" : "⏹️ Water pump stopped");
+  const handleToggleMotor = (nextCmd, override = false) => {
+    const isOverrideActive = override || commands.manualOverride === true;
+    toggleMotor(nextCmd, isOverrideActive);
+    showToast(
+      nextCmd === "ON"
+        ? isOverrideActive
+          ? "⚡ Water pump started (Manual Override)"
+          : "⚡ Water pump started"
+        : "⏹️ Water pump stopped"
+    );
   };
 
-  const handleToggleValve = (nextCmd) => {
-    toggleValve(nextCmd);
-    showToast(nextCmd === "OPEN" ? "🚰 Supply valve opened" : "🔒 Supply valve shut");
+  const handleToggleValve = (nextCmd, override = false) => {
+    const isOverrideActive = override || commands.manualOverride === true;
+    toggleValve(nextCmd, isOverrideActive);
+    showToast(
+      nextCmd === "OPEN"
+        ? isOverrideActive
+          ? "🚰 Supply valve opened (Manual Override)"
+          : "🚰 Supply valve opened"
+        : "🔒 Supply valve shut"
+    );
+  };
+
+  const handleToggleManualOverride = (enabled) => {
+    setManualOverride(enabled);
+    showToast(
+      enabled
+        ? "⚡ Manual Override Active • Auto-Guards Paused"
+        : "🛡️ Auto Protection Guards Restored"
+    );
   };
 
   const handleSaveSchedule = (scheduleData) => {
@@ -260,13 +284,15 @@ export default function App() {
               motorFault={status.motorFault || false}
               valveOpen={status.valveOpen || status.valveState === "OPEN"}
               capacityLiters={config.tankCapacityLiters || 20}
+              manualOverride={commands.manualOverride === true}
+              onToggleManualOverride={handleToggleManualOverride}
+              onToggleMotorManual={(cmd) => handleToggleMotor(cmd, true)}
+              onToggleValveManual={(cmd) => handleToggleValve(cmd, true)}
               onQuickTopUp={(mins) => {
                 handleToggleMotor("ON");
                 showToast(`💧 Started ${mins}-minute auto-stop refill`);
               }}
               onStopPump={() => handleToggleMotor("OFF")}
-              onOpenVoice={() => setShowVoiceModal(true)}
-              onOpenHelp={() => setShowHelpModal(true)}
             />
 
             {/* Device Status & Network Health */}
@@ -317,6 +343,8 @@ export default function App() {
               fullThreshold={config.fullThreshold || 90}
               probeTop={status.probeTop || false}
               isSubmitting={isSubmitting}
+              manualOverride={commands.manualOverride === true}
+              onToggleManualOverride={handleToggleManualOverride}
               onToggle={handleToggleMotor}
               onSimulateFault={simulateFault}
             />
@@ -327,6 +355,8 @@ export default function App() {
               waterLevel={status.waterLevel ?? 60}
               probeTop={status.probeTop || false}
               isSubmitting={isSubmitting}
+              manualOverride={commands.manualOverride === true}
+              onToggleManualOverride={handleToggleManualOverride}
               onToggleValve={handleToggleValve}
             />
           </View>
@@ -539,6 +569,8 @@ export default function App() {
         motorRunning={status.motorRunning || false}
         valveOpen={status.valveOpen || status.valveState === "OPEN"}
         capacityLiters={config.tankCapacityLiters || 20}
+        manualOverride={commands.manualOverride === true}
+        onToggleManualOverride={handleToggleManualOverride}
         onToggleMotor={handleToggleMotor}
         onToggleValve={handleToggleValve}
         onClose={() => setShowVoiceModal(false)}
@@ -556,9 +588,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (NativeStatusBar.currentHeight || 28) + 12 : 16,
-    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "android" ? (NativeStatusBar.currentHeight || 28) + 10 : 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
     backgroundColor: "#FFFFFF",
@@ -571,10 +603,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#000000",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginRight: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 14,
+    marginRight: 6,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -582,46 +614,46 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   voiceHeaderIcon: {
-    fontSize: 13,
+    fontSize: 12,
     marginRight: 4,
   },
   voiceHeaderText: {
     color: "#FFFFFF",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "900",
     letterSpacing: 0.5,
   },
   helpHeaderBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: "#F8FAFC",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 8,
+    marginRight: 6,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   helpHeaderIcon: {
-    fontSize: 16,
+    fontSize: 15,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   logoBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: "#F0F9FF",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 10,
     borderWidth: 1,
     borderColor: "#BAE6FD",
   },
   logoIcon: {
-    fontSize: 22,
+    fontSize: 20,
   },
   toastContainer: {
     position: "absolute",
@@ -657,21 +689,21 @@ const styles = StyleSheet.create({
   },
   appName: {
     color: "#0F172A",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "900",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   appSub: {
     color: "#64748B",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     marginTop: 2,
   },
   infoBadge: {
     backgroundColor: "#000000",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 14,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
@@ -680,7 +712,7 @@ const styles = StyleSheet.create({
   },
   infoBadgeText: {
     color: "#FFFFFF",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.5,
   },

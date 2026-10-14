@@ -19,9 +19,9 @@ export default function HelpFaqModal({ visible = false, onClose = () => {} }) {
       icon: "⏰",
     },
     {
-      q: "Can I manually start the pump anytime?",
-      a: "Yes! Tap the 'START WATER PUMP' button in the Overview tab. You can also pick a 5-minute or 10-minute quick-timer that stops on its own.",
-      icon: "▶️",
+      q: "Can I manually turn the pump or valve on and off anytime?",
+      a: "Yes! Tap '⚡ MANUAL OVERRIDE' in the Overview tab. This gives you direct manual switches to turn the pump and valve ON or OFF whenever needed, bypassing automatic cutoffs.",
+      icon: "⚡",
     },
     {
       q: "What does the Water Supply Valve do?",

@@ -143,13 +143,13 @@ export const subscribeToDeviceState = (deviceId, callback, useSimulation = false
   };
 };
 
-export const sendMotorCommand = async (deviceId, command, useSimulation = false) => {
+export const sendMotorCommand = async (deviceId, command, useSimulation = false, manualOverride = false) => {
   const targetDevice = deviceId || DEFAULT_DEVICE_ID;
 
   if (useSimulation || !isFirebaseConfigured()) {
-    if (command === "ON") {
+    if (command === "ON" && !manualOverride) {
       if (simulatedDeviceState.status.probeTop || simulatedDeviceState.status.waterLevel >= 90) {
-        throw new Error("Cannot start pump: Tank is already FULL (Top probe submerged)");
+        throw new Error("Cannot start pump: Tank is already FULL (Top probe submerged). Enable manual override to force.");
       }
       if (simulatedDeviceState.status.motorFault) {
         throw new Error("Cannot start pump: Dry-run fault is active. Clear/reset fault first.");
@@ -170,6 +170,7 @@ export const sendMotorCommand = async (deviceId, command, useSimulation = false)
       commands: {
         ...simulatedDeviceState.commands,
         motorCommand: command,
+        manualOverride: manualOverride || simulatedDeviceState.commands.manualOverride || false,
       },
       history: [
         {
@@ -178,7 +179,7 @@ export const sendMotorCommand = async (deviceId, command, useSimulation = false)
           waterLevel: simulatedDeviceState.status.waterLevel,
           motorState: command,
           valveState: simulatedDeviceState.status.valveState,
-          note: `MOSFET Pump command: ${command}`,
+          note: manualOverride ? `Manual Override Pump: ${command}` : `MOSFET Pump command: ${command}`,
           ts: Date.now(),
         },
         ...simulatedDeviceState.history.slice(0, 19),
@@ -189,8 +190,8 @@ export const sendMotorCommand = async (deviceId, command, useSimulation = false)
     return true;
   }
 
-  const url = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands/motorCommand.json`;
-  const response = await fetch(url, {
+  const motorUrl = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands/motorCommand.json`;
+  const response = await fetch(motorUrl, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(command),
@@ -200,16 +201,25 @@ export const sendMotorCommand = async (deviceId, command, useSimulation = false)
     throw new Error(`Failed to send motor command to Firebase: ${response.statusText}`);
   }
 
+  if (manualOverride) {
+    const overrideUrl = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands/manualOverride.json`;
+    await fetch(overrideUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(true),
+    }).catch(() => {});
+  }
+
   return true;
 };
 
 // Remote Water-Supply Valve Control (Expected Output #4)
-export const sendValveCommand = async (deviceId, command, useSimulation = false) => {
+export const sendValveCommand = async (deviceId, command, useSimulation = false, manualOverride = false) => {
   const targetDevice = deviceId || DEFAULT_DEVICE_ID;
 
   if (useSimulation || !isFirebaseConfigured()) {
-    if (command === "OPEN" && simulatedDeviceState.status.waterLevel >= 90) {
-      throw new Error("Cannot open valve: Tank is already full");
+    if (command === "OPEN" && !manualOverride && simulatedDeviceState.status.waterLevel >= 90) {
+      throw new Error("Cannot open valve: Tank is already full. Enable manual override to force.");
     }
 
     const isOpen = command === "OPEN";
@@ -223,6 +233,7 @@ export const sendValveCommand = async (deviceId, command, useSimulation = false)
       commands: {
         ...simulatedDeviceState.commands,
         valveCommand: command,
+        manualOverride: manualOverride || simulatedDeviceState.commands.manualOverride || false,
       },
       history: [
         {
@@ -231,7 +242,7 @@ export const sendValveCommand = async (deviceId, command, useSimulation = false)
           waterLevel: simulatedDeviceState.status.waterLevel,
           motorState: simulatedDeviceState.status.relayState,
           valveState: command,
-          note: `Inlet Supply Valve: ${command} (GPIO 27)`,
+          note: manualOverride ? `Manual Override Valve: ${command}` : `Inlet Supply Valve: ${command} (GPIO 27)`,
           ts: Date.now(),
         },
         ...simulatedDeviceState.history.slice(0, 19),
@@ -253,6 +264,55 @@ export const sendValveCommand = async (deviceId, command, useSimulation = false)
     throw new Error(`Failed to send valve command to Firebase: ${response.statusText}`);
   }
 
+  if (manualOverride) {
+    const overrideUrl = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands/manualOverride.json`;
+    await fetch(overrideUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(true),
+    }).catch(() => {});
+  }
+
+  return true;
+};
+
+export const setManualOverride = async (deviceId, enabled, useSimulation = false) => {
+  const targetDevice = deviceId || DEFAULT_DEVICE_ID;
+
+  if (useSimulation || !isFirebaseConfigured()) {
+    simulatedDeviceState = {
+      ...simulatedDeviceState,
+      commands: {
+        ...simulatedDeviceState.commands,
+        manualOverride: enabled,
+      },
+      history: [
+        {
+          id: `h-${Date.now()}`,
+          event: enabled ? "MANUAL_OVERRIDE_ON" : "MANUAL_OVERRIDE_OFF",
+          waterLevel: simulatedDeviceState.status.waterLevel,
+          motorState: simulatedDeviceState.status.relayState,
+          valveState: simulatedDeviceState.status.valveState,
+          note: enabled ? "Manual Override activated by homeowner" : "Auto-Protection restored",
+          ts: Date.now(),
+        },
+        ...simulatedDeviceState.history.slice(0, 19),
+      ],
+    };
+    notifySimulationListeners();
+    return true;
+  }
+
+  const url = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands/manualOverride.json`;
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(enabled),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update manual override mode: ${response.statusText}`);
+  }
   return true;
 };
 

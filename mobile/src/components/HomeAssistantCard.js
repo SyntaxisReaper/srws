@@ -7,10 +7,12 @@ export default function HomeAssistantCard({
   motorFault = false,
   valveOpen = false,
   capacityLiters = 20,
+  manualOverride = false,
+  onToggleManualOverride = () => {},
+  onToggleMotorManual = () => {},
+  onToggleValveManual = () => {},
   onQuickTopUp = () => {},
   onStopPump = () => {},
-  onOpenVoice = () => {},
-  onOpenHelp = () => {},
 }) {
   const currentHour = new Date().getHours();
   let greeting = "Good Evening 🌇";
@@ -29,8 +31,13 @@ export default function HomeAssistantCard({
   let statusBadgeBg = "#F0FDF4";
   let statusBadgeColor = "#16A34A";
 
-  if (motorFault) {
-    message = "Safety shutoff active: Pump was stopped to prevent dry-running. Tap below to inspect.";
+  if (manualOverride) {
+    message = "Manual Override is active. Automatic guards are paused so you can turn the pump and valve ON or OFF at will.";
+    statusBadge = "⚡ MANUAL OVERRIDE";
+    statusBadgeBg = "#FEF3C7";
+    statusBadgeColor = "#B45309";
+  } else if (motorFault) {
+    message = "Safety shutoff active: Pump was stopped to prevent dry-running. Switch to Manual Override to force-test if needed.";
     statusBadge = "⚠️ SAFETY CUTOFF";
     statusBadgeBg = "#FEF2F2";
     statusBadgeColor = "#DC2626";
@@ -72,12 +79,12 @@ export default function HomeAssistantCard({
       {/* Natural Language Status Sentence */}
       <Text style={styles.summaryMessage}>{message}</Text>
 
-      {/* Household Readiness Indicators */}
+      {/* Household Readiness Indicators - Zero Truncation */}
       <View style={styles.readinessContainer}>
         <View style={styles.readinessItem}>
           <Text style={styles.readinessIcon}>🚿</Text>
-          <View>
-            <Text style={styles.readinessLabel}>Shower</Text>
+          <View style={styles.readinessTextCol}>
+            <Text style={styles.readinessLabel} numberOfLines={1}>Shower</Text>
             <Text style={[styles.readinessStatus, showerReady ? styles.statusGood : styles.statusLow]}>
               {showerReady ? "Ready" : "Low"}
             </Text>
@@ -88,8 +95,8 @@ export default function HomeAssistantCard({
 
         <View style={styles.readinessItem}>
           <Text style={styles.readinessIcon}>🍽️</Text>
-          <View>
-            <Text style={styles.readinessLabel}>Kitchen</Text>
+          <View style={styles.readinessTextCol}>
+            <Text style={styles.readinessLabel} numberOfLines={1}>Kitchen</Text>
             <Text style={[styles.readinessStatus, kitchenReady ? styles.statusGood : styles.statusLow]}>
               {kitchenReady ? "Ready" : "Low"}
             </Text>
@@ -100,8 +107,8 @@ export default function HomeAssistantCard({
 
         <View style={styles.readinessItem}>
           <Text style={styles.readinessIcon}>🧺</Text>
-          <View>
-            <Text style={styles.readinessLabel}>Laundry</Text>
+          <View style={styles.readinessTextCol}>
+            <Text style={styles.readinessLabel} numberOfLines={1}>Laundry</Text>
             <Text style={[styles.readinessStatus, laundryReady ? styles.statusGood : styles.statusLow]}>
               {laundryReady ? "Ready" : "Low"}
             </Text>
@@ -109,39 +116,106 @@ export default function HomeAssistantCard({
         </View>
       </View>
 
-      {/* Quick Action Button Row - SOLID BLACK with WHITE TEXT */}
-      <View style={styles.actionRow}>
-        {motorRunning ? (
-          <TouchableOpacity
-            style={[styles.primaryActionBtn, styles.stopBtn]}
-            onPress={onStopPump}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnIcon}>⏹️</Text>
-            <Text style={styles.btnText}>STOP PUMP</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.primaryActionBtn, waterLevel >= 90 && styles.btnDisabled]}
-            onPress={() => onQuickTopUp(10)}
-            disabled={waterLevel >= 90 || motorFault}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnIcon}>💧</Text>
-            <Text style={styles.btnText}>
-              {waterLevel >= 90 ? "TANK FULL" : "1-TAP REFILL (10M)"}
-            </Text>
-          </TouchableOpacity>
-        )}
+      {/* Operating Mode Bar */}
+      <View style={styles.modeBar}>
+        <View style={styles.modeStatusLeft}>
+          <View style={[styles.modeDot, manualOverride ? styles.modeDotOverride : styles.modeDotAuto]} />
+          <Text style={styles.modeStatusText}>
+            {manualOverride ? "Manual Mode Active" : "Auto-Guards Active"}
+          </Text>
+        </View>
 
-        <TouchableOpacity style={styles.voiceBtn} onPress={onOpenVoice} activeOpacity={0.85}>
-          <Text style={styles.voiceBtnText}>🎙️ VOICE</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.helpBtn} onPress={onOpenHelp} activeOpacity={0.85}>
-          <Text style={styles.helpBtnText}>❓</Text>
+        <TouchableOpacity
+          style={[styles.overrideToggleBtn, manualOverride && styles.overrideToggleBtnActive]}
+          onPress={() => onToggleManualOverride(!manualOverride)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.overrideToggleText, manualOverride && styles.overrideToggleTextActive]}>
+            {manualOverride ? "RESTORE AUTO" : "⚡ MANUAL OVERRIDE"}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Manual Override Direct Controls vs 1-Tap Auto Refill */}
+      {manualOverride ? (
+        <View style={styles.manualControlsBox}>
+          <View style={styles.manualBtnRow}>
+            {/* Direct Pump Toggle */}
+            <TouchableOpacity
+              style={[
+                styles.manualActionBtn,
+                motorRunning ? styles.manualBtnRunning : styles.manualBtnSolid,
+              ]}
+              onPress={() => onToggleMotorManual(motorRunning ? "OFF" : "ON")}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.manualBtnIcon}>{motorRunning ? "⏹️" : "⚡"}</Text>
+              <View style={styles.manualBtnTextCol}>
+                <Text style={styles.manualBtnAction}>
+                  {motorRunning ? "TURN OFF PUMP" : "TURN ON PUMP"}
+                </Text>
+                <Text style={styles.manualBtnSub}>
+                  {motorRunning ? "Running • Tap to stop" : "Stopped • Tap to run"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Direct Valve Toggle */}
+            <TouchableOpacity
+              style={[
+                styles.manualActionBtn,
+                valveOpen ? styles.manualBtnRunning : styles.manualBtnSolid,
+              ]}
+              onPress={() => onToggleValveManual(valveOpen ? "CLOSED" : "OPEN")}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.manualBtnIcon}>{valveOpen ? "🔒" : "🚰"}</Text>
+              <View style={styles.manualBtnTextCol}>
+                <Text style={styles.manualBtnAction}>
+                  {valveOpen ? "SHUT VALVE" : "OPEN VALVE"}
+                </Text>
+                <Text style={styles.manualBtnSub}>
+                  {valveOpen ? "Inlet open • Tap to shut" : "Shut • Tap to open"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.actionRow}>
+          {motorRunning ? (
+            <TouchableOpacity
+              style={[styles.primaryActionBtn, styles.stopBtn]}
+              onPress={onStopPump}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.btnIcon}>⏹️</Text>
+              <Text style={styles.btnText}>STOP REFILL PUMP</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.primaryActionBtn, waterLevel >= 90 && styles.btnDisabled]}
+              onPress={() => onQuickTopUp(10)}
+              disabled={waterLevel >= 90 || motorFault}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.btnIcon}>💧</Text>
+              <Text style={styles.btnText}>
+                {waterLevel >= 90 ? "TANK FULL • READY" : "1-TAP REFILL (10 MINS)"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.overridePillBtn}
+            onPress={() => onToggleManualOverride(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.overridePillIcon}>⚡</Text>
+            <Text style={styles.overridePillText}>OVERRIDE</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -204,21 +278,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     borderRadius: 14,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#F1F5F9",
   },
   readinessItem: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     flex: 1,
   },
   readinessIcon: {
-    fontSize: 18,
-    marginRight: 8,
+    fontSize: 16,
+    marginRight: 6,
+  },
+  readinessTextCol: {
+    flexShrink: 1,
   },
   readinessLabel: {
     color: "#64748B",
@@ -237,9 +315,60 @@ const styles = StyleSheet.create({
   },
   readinessDivider: {
     width: 1,
-    height: 24,
+    height: 22,
     backgroundColor: "#E2E8F0",
-    marginHorizontal: 8,
+    marginHorizontal: 4,
+  },
+  modeBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  modeStatusLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  modeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 7,
+  },
+  modeDotAuto: {
+    backgroundColor: "#16A34A",
+  },
+  modeDotOverride: {
+    backgroundColor: "#D97706",
+  },
+  modeStatusText: {
+    color: "#334155",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  overrideToggleBtn: {
+    backgroundColor: "#000000",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  overrideToggleBtnActive: {
+    backgroundColor: "#D97706",
+  },
+  overrideToggleText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  overrideToggleTextActive: {
+    color: "#FFFFFF",
   },
   actionRow: {
     flexDirection: "row",
@@ -277,43 +406,75 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.5,
   },
-  voiceBtn: {
+  overridePillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#000000",
     paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 6,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
   },
-  voiceBtnText: {
+  overridePillIcon: {
+    fontSize: 13,
+    marginRight: 4,
+  },
+  overridePillText: {
     color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 0.5,
   },
-  helpBtn: {
-    backgroundColor: "#000000",
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 14,
+  manualControlsBox: {
+    width: "100%",
+  },
+  manualBtnRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  manualActionBtn: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginHorizontal: 4,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
-  helpBtnText: {
+  manualBtnSolid: {
+    backgroundColor: "#000000",
+  },
+  manualBtnRunning: {
+    backgroundColor: "#000000",
+    borderWidth: 1.5,
+    borderColor: "#10B981",
+  },
+  manualBtnIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  manualBtnTextCol: {
+    flex: 1,
+  },
+  manualBtnAction: {
     color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
+  manualBtnSub: {
+    color: "#CBD5E1",
+    fontSize: 9,
+    fontWeight: "600",
+    marginTop: 2,
   },
 });

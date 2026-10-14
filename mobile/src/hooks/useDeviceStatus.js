@@ -10,6 +10,7 @@ import {
   triggerSimulatedFault,
   setContactProbeLevel,
   updateScheduleConfig,
+  setManualOverride as apiSetManualOverride,
 } from "../services/deviceService";
 import { DEFAULT_DEVICE_ID } from "../services/firebaseConfig";
 
@@ -34,11 +35,11 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
   }, [deviceId, forceSimulation]);
 
   const toggleMotor = useCallback(
-    async (targetCommand) => {
+    async (targetCommand, manualOverride = false) => {
       setIsSubmitting(true);
       setActionError(null);
       try {
-        await sendMotorCommand(deviceId, targetCommand, forceSimulation);
+        await sendMotorCommand(deviceId, targetCommand, forceSimulation, manualOverride);
       } catch (err) {
         setActionError(err.message || "Failed to send motor command");
       } finally {
@@ -49,13 +50,27 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
   );
 
   const toggleValve = useCallback(
-    async (targetCommand) => {
+    async (targetCommand, manualOverride = false) => {
       setIsSubmitting(true);
       setActionError(null);
       try {
-        await sendValveCommand(deviceId, targetCommand, forceSimulation);
+        await sendValveCommand(deviceId, targetCommand, forceSimulation, manualOverride);
       } catch (err) {
         setActionError(err.message || "Failed to send valve command");
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [deviceId, forceSimulation]
+  );
+
+  const setManualOverrideMode = useCallback(
+    async (enabled) => {
+      setIsSubmitting(true);
+      try {
+        await apiSetManualOverride(deviceId, enabled, forceSimulation);
+      } catch (err) {
+        setActionError(err.message || "Failed to update manual override mode");
       } finally {
         setIsSubmitting(false);
       }
@@ -93,6 +108,7 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
     clearError: () => setActionError(null),
     toggleMotor,
     toggleValve,
+    setManualOverride: setManualOverrideMode,
     simulateFault,
     changeWaterLevel,
     saveSchedule,

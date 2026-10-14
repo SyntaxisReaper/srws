@@ -29,6 +29,8 @@ export default function VoiceControlModal({
   motorRunning = false,
   valveOpen = false,
   capacityLiters = 20,
+  manualOverride = false,
+  onToggleManualOverride = () => {},
   onToggleMotor = () => {},
   onToggleValve = () => {},
   onClose = () => {},
@@ -131,6 +133,37 @@ export default function VoiceControlModal({
     const text = (rawText || "").toLowerCase().trim();
     setTranscript(`"${rawText}"`);
 
+    // 0. MANUAL OVERRIDE & AUTO MODE COMMANDS
+    if (
+      text.includes("manual override") ||
+      text.includes("manual mode") ||
+      text.includes("force mode") ||
+      text.includes("override on") ||
+      text.includes("enable override")
+    ) {
+      onToggleManualOverride(true);
+      const spoken = "Manual Override mode enabled. You can now turn on or off the pump and valve at any time.";
+      setResponseMessage("⚡ Manual Override Enabled: Direct on/off active");
+      setMatchedAction("OVERRIDE_ON");
+      speakResponse(spoken);
+      return;
+    }
+
+    if (
+      text.includes("auto mode") ||
+      text.includes("automatic mode") ||
+      text.includes("restore auto") ||
+      text.includes("disable override") ||
+      text.includes("override off")
+    ) {
+      onToggleManualOverride(false);
+      const spoken = "Automatic Protection Guards restored. Auto overflow cutoff is active.";
+      setResponseMessage("🛡️ Automatic Protection Mode Restored");
+      setMatchedAction("AUTO_ON");
+      speakResponse(spoken);
+      return;
+    }
+
     // 1. PUMP ON / START
     if (
       text.includes("start pump") ||
@@ -141,18 +174,21 @@ export default function VoiceControlModal({
       text.includes("refill tank") ||
       text.includes("start motor") ||
       text.includes("motor on") ||
+      text.includes("force start pump") ||
       text.includes("start") ||
       text.includes("chalu")
     ) {
-      if (waterLevel >= 90) {
-        const spoken = "Tank is already full at 90 percent. Pump cannot be started to prevent overflow.";
-        setResponseMessage("⚠️ Tank is already full (90%). Pump locked.");
+      if (waterLevel >= 90 && !manualOverride) {
+        const spoken = "Tank is already full at 90 percent. Pump locked to prevent overflow. Say enable manual override to bypass.";
+        setResponseMessage("⚠️ Tank is full (90%). Say 'Manual Override' to bypass.");
         setMatchedAction("PUMP_LOCKED");
         speakResponse(spoken);
       } else {
-        onToggleMotor("ON");
-        const spoken = `Starting the water pump now. Tank is currently at ${waterLevel} percent.`;
-        setResponseMessage("✓ Action: Water Pump Started");
+        onToggleMotor("ON", manualOverride);
+        const spoken = manualOverride
+          ? `Starting water pump via manual override. Tank is currently at ${waterLevel} percent.`
+          : `Starting the water pump now. Tank is currently at ${waterLevel} percent.`;
+        setResponseMessage(manualOverride ? "⚡ Action: Water Pump Force Started (Override)" : "✓ Action: Water Pump Started");
         setMatchedAction("PUMP_ON");
         speakResponse(spoken);
       }
@@ -167,12 +203,13 @@ export default function VoiceControlModal({
       text.includes("pump off") ||
       text.includes("stop motor") ||
       text.includes("motor off") ||
+      text.includes("force stop pump") ||
       text.includes("stop") ||
       text.includes("band") ||
       text.includes("cut off")
     ) {
-      onToggleMotor("OFF");
-      const spoken = "Water pump stopped. Overflow safety guard is standing by.";
+      onToggleMotor("OFF", manualOverride);
+      const spoken = "Water pump stopped immediately.";
       setResponseMessage("✓ Action: Water Pump Stopped");
       setMatchedAction("PUMP_OFF");
       speakResponse(spoken);
@@ -188,7 +225,7 @@ export default function VoiceControlModal({
       text.includes("city water open") ||
       text.includes("supply on")
     ) {
-      onToggleValve("OPEN");
+      onToggleValve("OPEN", manualOverride);
       const spoken = "Water supply valve opened. Municipal city water is now flowing in.";
       setResponseMessage("✓ Action: Water Supply Valve Opened");
       setMatchedAction("VALVE_OPEN");
@@ -206,7 +243,7 @@ export default function VoiceControlModal({
       text.includes("city water close") ||
       text.includes("supply off")
     ) {
-      onToggleValve("CLOSED");
+      onToggleValve("CLOSED", manualOverride);
       const spoken = "Water supply valve closed. Municipal city line is shut.";
       setResponseMessage("✓ Action: Water Supply Valve Closed");
       setMatchedAction("VALVE_CLOSED");
@@ -364,6 +401,26 @@ export default function VoiceControlModal({
               >
                 <Text style={styles.shortcutIcon}>🚰</Text>
                 <Text style={styles.shortcutText}>"Open Valve"</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shortcutChip}
+                onPress={() => handleShortcutPress("close water valve")}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.shortcutIcon}>🔒</Text>
+                <Text style={styles.shortcutText}>"Close Valve"</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shortcutChip}
+                onPress={() => handleShortcutPress(manualOverride ? "restore auto mode" : "enable manual override")}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.shortcutIcon}>⚡</Text>
+                <Text style={styles.shortcutText}>
+                  {manualOverride ? '"Auto Mode"' : '"Manual Override"'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity

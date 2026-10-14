@@ -146,29 +146,26 @@ export default function WaterLevelGauge({
             </Text>
           </View>
 
-          {/* Visual 3-Stage Sensor Level Indicators */}
-          <View style={styles.stageIndicatorCard}>
-            <View style={styles.stageRow}>
-              <View style={[styles.stageDot, (probeTop || waterLevel >= 90) && styles.stageDotActive]} />
-              <Text style={styles.stageLabel}>Upper Limit</Text>
-              <Text style={[styles.stageValue, (probeTop || waterLevel >= 90) && styles.stageValActive]}>
-                {probeTop || waterLevel >= 90 ? "Full Reached" : "Clear"}
+          {/* Visual 3-Stage Sensor Level Indicators (Horizontal Compact Strip) */}
+          <View style={styles.probeChipsRow}>
+            <View style={[styles.probeChip, (probeTop || waterLevel >= 90) && styles.probeChipFull]}>
+              <View style={[styles.probeDot, (probeTop || waterLevel >= 90) && styles.probeDotFull]} />
+              <Text style={[styles.probeChipText, (probeTop || waterLevel >= 90) && styles.probeTextActive]}>
+                Top 90%
               </Text>
             </View>
-            <View style={styles.stageDivider} />
-            <View style={styles.stageRow}>
-              <View style={[styles.stageDot, (probeMid || waterLevel >= 50) && styles.stageDotActive]} />
-              <Text style={styles.stageLabel}>Middle Level</Text>
-              <Text style={[styles.stageValue, (probeMid || waterLevel >= 50) && styles.stageValActive]}>
-                {probeMid || waterLevel >= 50 ? "Satisfied" : "Below Half"}
+
+            <View style={[styles.probeChip, (probeMid || waterLevel >= 50) && styles.probeChipMid]}>
+              <View style={[styles.probeDot, (probeMid || waterLevel >= 50) && styles.probeDotMid]} />
+              <Text style={[styles.probeChipText, (probeMid || waterLevel >= 50) && styles.probeTextActive]}>
+                Mid 50%
               </Text>
             </View>
-            <View style={styles.stageDivider} />
-            <View style={styles.stageRow}>
-              <View style={[styles.stageDot, (probeLow || waterLevel >= 20) && styles.stageDotActive]} />
-              <Text style={styles.stageLabel}>Safety Base</Text>
-              <Text style={[styles.stageValue, (probeLow || waterLevel >= 20) && styles.stageValActive]}>
-                {probeLow || waterLevel >= 20 ? "Safe (Water Present)" : "EMPTY CRITICAL"}
+
+            <View style={[styles.probeChip, (probeLow || waterLevel >= 20) && styles.probeChipLow]}>
+              <View style={[styles.probeDot, (probeLow || waterLevel >= 20) && styles.probeDotLow]} />
+              <Text style={[styles.probeChipText, (probeLow || waterLevel >= 20) && styles.probeTextActive]}>
+                Base 20%
               </Text>
             </View>
           </View>
@@ -485,48 +482,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
-  stageIndicatorCard: {
-    backgroundColor: "#F8FAFC",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+  probeChipsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  stageRow: {
+  probeChip: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 3,
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+    paddingVertical: 7,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginHorizontal: 2,
   },
-  stageDot: {
+  probeChipFull: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#BBF7D0",
+  },
+  probeChipMid: {
+    backgroundColor: "#F0F9FF",
+    borderColor: "#BAE6FD",
+  },
+  probeChipLow: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FECACA",
+  },
+  probeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: "#CBD5E1",
-    marginRight: 6,
+    marginRight: 4,
   },
-  stageDotActive: {
-    backgroundColor: "#10B981",
+  probeDotFull: {
+    backgroundColor: "#16A34A",
   },
-  stageLabel: {
-    flex: 1,
+  probeDotMid: {
+    backgroundColor: "#0284C7",
+  },
+  probeDotLow: {
+    backgroundColor: "#DC2626",
+  },
+  probeChipText: {
     color: "#64748B",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  stageValue: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    color: "#94A3B8",
   },
-  stageValActive: {
+  probeTextActive: {
     color: "#0F172A",
-  },
-  stageDivider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-    marginVertical: 2,
+    fontWeight: "800",
   },
   demoSection: {
     marginTop: 14,

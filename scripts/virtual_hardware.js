@@ -94,20 +94,30 @@ async function stepSimulation() {
     const commands = remoteData.commands || {};
     const remoteStatus = remoteData.status || {};
 
+    const isOverride = commands.manualOverride === true;
+
     // 1. Process Remote Motor Commands
-    if (commands.motorCommand === "ON" && !simState.motorRunning && !simState.motorFault) {
-      if (simState.waterLevel >= 90) {
-        console.log("[SAFETY] 🚫 Motor ON rejected: Top probe is already submerged (Tank Full).");
+    if (commands.motorCommand === "ON" && !simState.motorRunning && (!simState.motorFault || isOverride)) {
+      if (simState.waterLevel >= 100 && !isOverride) {
+        console.log("[SAFETY] 🚫 Motor ON rejected: Physical capacity reached (100%).");
+        await patchCommand({ motorCommand: "OFF" });
+      } else if (simState.waterLevel >= 90 && !isOverride) {
+        console.log("[SAFETY] 🚫 Motor ON rejected: Top probe is already submerged (Tank Full). Enable Manual Override to bypass.");
         await patchCommand({ motorCommand: "OFF" });
       } else {
         simState.motorRunning = true;
-        console.log("[ACTUATOR] ⚡ MOSFET Pump (GPIO 26): ENERGIZED (ON)");
-        await addHistoryEvent("MOTOR_ON", "Pump started via remote mobile command");
+        if (isOverride) {
+          console.log("[ACTUATOR] ⚡ MOSFET Pump (GPIO 26): ENERGIZED (ON) via MANUAL OVERRIDE");
+          await addHistoryEvent("MOTOR_ON", "Pump started via MANUAL OVERRIDE");
+        } else {
+          console.log("[ACTUATOR] ⚡ MOSFET Pump (GPIO 26): ENERGIZED (ON)");
+          await addHistoryEvent("MOTOR_ON", "Pump started via remote mobile command");
+        }
       }
     } else if (commands.motorCommand === "OFF" && simState.motorRunning) {
       simState.motorRunning = false;
-      console.log("[ACTUATOR] ⏹️ MOSFET Pump (GPIO 26): DISENGAGED (OFF)");
-      await addHistoryEvent("MOTOR_OFF", "Pump stopped via remote mobile command");
+      console.log(`[ACTUATOR] ⏹️ MOSFET Pump (GPIO 26): DISENGAGED (OFF)${isOverride ? " via MANUAL OVERRIDE" : ""}`);
+      await addHistoryEvent("MOTOR_OFF", isOverride ? "Pump stopped via MANUAL OVERRIDE" : "Pump stopped via remote mobile command");
     } else if (commands.motorCommand === "RESET_FAULT") {
       simState.motorFault = false;
       console.log("[RESET] 🔄 Dry-run fault cleared by operator.");
@@ -116,18 +126,18 @@ async function stepSimulation() {
 
     // 2. Process Remote Solenoid Valve Commands
     if (commands.valveCommand === "OPEN" && !simState.valveOpen) {
-      if (simState.waterLevel >= 95) {
-        console.log("[SAFETY] 🚫 Valve OPEN rejected: Tank is near overflow.");
+      if (simState.waterLevel >= 98 && !isOverride) {
+        console.log("[SAFETY] 🚫 Valve OPEN rejected: Tank is near overflow. Enable Manual Override to bypass.");
         await patchCommand({ valveCommand: "CLOSED" });
       } else {
         simState.valveOpen = true;
-        console.log("[ACTUATOR] 🌊 Solenoid Valve (GPIO 27): OPENED");
-        await addHistoryEvent("VALVE_OPEN", "Municipal supply valve opened");
+        console.log(`[ACTUATOR] 🌊 Solenoid Valve (GPIO 27): OPENED${isOverride ? " via MANUAL OVERRIDE" : ""}`);
+        await addHistoryEvent("VALVE_OPEN", isOverride ? "Supply valve opened via MANUAL OVERRIDE" : "Municipal supply valve opened");
       }
     } else if (commands.valveCommand === "CLOSED" && simState.valveOpen) {
       simState.valveOpen = false;
-      console.log("[ACTUATOR] 🔒 Solenoid Valve (GPIO 27): CLOSED");
-      await addHistoryEvent("VALVE_CLOSED", "Municipal supply valve closed");
+      console.log(`[ACTUATOR] 🔒 Solenoid Valve (GPIO 27): CLOSED${isOverride ? " via MANUAL OVERRIDE" : ""}`);
+      await addHistoryEvent("VALVE_CLOSED", isOverride ? "Supply valve closed via MANUAL OVERRIDE" : "Municipal supply valve closed");
     }
 
     // Synchronize initial water level if remote was modified directly in console
