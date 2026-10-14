@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -18,11 +18,19 @@ import ValveControl from "./src/components/ValveControl";
 import StatusBarComponent from "./src/components/StatusBar";
 import AlertHistory from "./src/components/AlertHistory";
 import SchedulerPanel from "./src/components/SchedulerPanel";
+import AlertBanner from "./src/components/AlertBanner";
+import AlertSettingsModal from "./src/components/AlertSettingsModal";
 import { DEFAULT_DEVICE_ID } from "./src/services/firebaseConfig";
+import {
+  registerForPushNotificationsAsync,
+  triggerNativeAlert,
+} from "./src/services/notificationService";
 
 export default function App() {
   const [useSimulation, setUseSimulation] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
+  const prevStatusRef = useRef({ waterLevel: 50, motorFault: false });
 
   const {
     deviceData,
@@ -59,6 +67,45 @@ export default function App() {
         }))
         .sort((a, b) => (b.ts || 0) - (a.ts || 0))
     : [];
+
+  // Register native notification permissions on startup
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
+
+  // Monitor live transitions and trigger instant native push alerts
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    const currentLevel = status.waterLevel ?? 50;
+    const currentFault = !!status.motorFault;
+
+    // 1. Tank full overflow cutoff
+    if (currentLevel >= 90 && prev.waterLevel < 90) {
+      triggerNativeAlert(
+        "💧 Tank Full Cut-Off",
+        `Tank reached ${currentLevel}%. Overflow cut-off engaged, pump stopped.`,
+        "default"
+      );
+    }
+    // 2. Low water alert
+    else if (currentLevel <= 20 && prev.waterLevel > 20) {
+      triggerNativeAlert(
+        "⚠️ Low Water Warning",
+        `Water level dropped to ${currentLevel}%. Open supply valve or start pump.`,
+        "default"
+      );
+    }
+    // 3. Dry-run motor fault
+    if (currentFault && !prev.motorFault) {
+      triggerNativeAlert(
+        "🚨 Motor Dry-Run Fault",
+        "INA226 detected current < 0.2A! Power cut to protect pump.",
+        "critical"
+      );
+    }
+
+    prevStatusRef.current = { waterLevel: currentLevel, motorFault: currentFault };
+  }, [status.waterLevel, status.motorFault]);
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -109,6 +156,18 @@ export default function App() {
           networkUplink={status.networkUplink || "Wi-Fi (Primary) • Hotspot Ready"}
           isSimulation={useSimulation}
           onToggleSimulation={() => setUseSimulation(!useSimulation)}
+        />
+
+        {/* Dynamic Heads-Up Alert & Warning Banner */}
+        <AlertBanner
+          motorFault={status.motorFault || false}
+          waterLevel={status.waterLevel ?? 50}
+          probeTop={status.probeTop || false}
+          probeLow={status.probeLow !== false}
+          valveOpen={status.valveOpen || status.valveState === "OPEN"}
+          onResetFault={simulateFault}
+          onOpenValve={() => toggleValve("OPEN")}
+          onOpenSettings={() => setShowAlertSettings(true)}
         />
 
         {/* Live Water Level Gauge (3 Contact Probes) */}
@@ -188,6 +247,12 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      {/* Alert Settings & Test Push Notification Modal */}
+      <AlertSettingsModal
+        visible={showAlertSettings}
+        onClose={() => setShowAlertSettings(false)}
+      />
     </SafeAreaView>
   );
 }
