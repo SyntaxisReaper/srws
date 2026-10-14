@@ -35,7 +35,7 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("overview"); // "overview" | "automation" | "activity"
-  const [useSimulation, setUseSimulation] = useState(true);
+  const [useSimulation, setUseSimulation] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
