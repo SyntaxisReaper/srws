@@ -42,7 +42,7 @@ export default function AlertSettingsModal({
             <View style={styles.settingRow}>
               <View style={styles.settingText}>
                 <Text style={styles.settingLabel}>💧 Tank Full Protection</Text>
-                <Text style={styles.settingDesc}>Alert when tank reaches >= 90% and cuts pump</Text>
+                <Text style={styles.settingDesc}>Alert when tank reaches 90% or higher and cuts pump</Text>
               </View>
               <Switch
                 value={notifyFull}
@@ -55,7 +55,7 @@ export default function AlertSettingsModal({
             <View style={styles.settingRow}>
               <View style={styles.settingText}>
                 <Text style={styles.settingLabel}>⚠️ Low Water Level Alert</Text>
-                <Text style={styles.settingDesc}>Alert when tank drops to <= 20%</Text>
+                <Text style={styles.settingDesc}>Alert when tank drops to 20% or lower</Text>
               </View>
               <Switch
                 value={notifyLow}
