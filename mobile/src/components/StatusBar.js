@@ -14,7 +14,16 @@ export default function StatusBar({
 
   useEffect(() => {
     const updateTime = () => {
-      const diffSec = Math.max(0, Math.round((Date.now() - (lastSeen || Date.now())) / 1000));
+      let ts = Number(lastSeen);
+      if (!ts || isNaN(ts) || ts <= 0) {
+        setSecondsAgo(9999);
+        return;
+      }
+      // If timestamp is in seconds (10 digits), convert to milliseconds (13 digits)
+      if (ts < 10000000000) {
+        ts = ts * 1000;
+      }
+      const diffSec = Math.max(0, Math.round((Date.now() - ts) / 1000));
       setSecondsAgo(diffSec);
     };
 
@@ -23,7 +32,7 @@ export default function StatusBar({
     return () => clearInterval(timer);
   }, [lastSeen]);
 
-  const isOnline = secondsAgo < 35;
+  const isOnline = isSimulation || secondsAgo < 120;
 
   let wifiQuality = "Strong";
   let wifiColor = "#10B981";
