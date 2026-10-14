@@ -26,6 +26,7 @@ import WaterUsageChart from "./src/components/WaterUsageChart";
 import HomeAssistantCard from "./src/components/HomeAssistantCard";
 import HelpFaqModal from "./src/components/HelpFaqModal";
 import VoiceControlModal from "./src/components/VoiceControlModal";
+import StartupScreen from "./src/components/StartupScreen";
 import { DEFAULT_DEVICE_ID } from "./src/services/firebaseConfig";
 import {
   registerForPushNotificationsAsync,
@@ -39,6 +40,7 @@ export default function App() {
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [isStartupComplete, setIsStartupComplete] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const toastTimeoutRef = useRef(null);
   const prevStatusRef = useRef({ waterLevel: 50, motorFault: false });
@@ -560,6 +562,10 @@ export default function App() {
       <HelpFaqModal
         visible={showHelpModal}
         onClose={() => setShowHelpModal(false)}
+        onReplayStartup={() => {
+          setShowHelpModal(false);
+          setIsStartupComplete(false);
+        }}
       />
 
       {/* Voice Control Assistant Modal */}
@@ -575,6 +581,11 @@ export default function App() {
         onToggleValve={handleToggleValve}
         onClose={() => setShowVoiceModal(false)}
       />
+
+      {/* Modern Startup Animation Overlay */}
+      {!isStartupComplete && (
+        <StartupScreen onFinish={() => setIsStartupComplete(true)} />
+      )}
     </SafeAreaView>
   );
 }

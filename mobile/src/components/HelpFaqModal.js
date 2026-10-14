@@ -1,7 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from "react-native";
 
-export default function HelpFaqModal({ visible = false, onClose = () => {} }) {
+export default function HelpFaqModal({
+  visible = false,
+  onClose = () => {},
+  onReplayStartup = () => {},
+}) {
   const faqs = [
     {
       q: "Will my water tank ever overflow?",
@@ -63,6 +67,15 @@ export default function HelpFaqModal({ visible = false, onClose = () => {} }) {
             ))}
             <View style={{ height: 16 }} />
           </ScrollView>
+
+          {/* Replay Startup Animation Button */}
+          <TouchableOpacity
+            style={styles.replayBtn}
+            onPress={onReplayStartup}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.replayBtnText}>✨ REPLAY APP STARTUP ANIMATION</Text>
+          </TouchableOpacity>
 
           {/* Action Button - SOLID BLACK with WHITE TEXT */}
           <TouchableOpacity style={styles.doneBtn} onPress={onClose} activeOpacity={0.85}>
@@ -164,12 +177,27 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     paddingLeft: 26,
   },
+  replayBtn: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  replayBtnText: {
+    color: "#0F172A",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
   doneBtn: {
     backgroundColor: "#000000",
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 4,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
