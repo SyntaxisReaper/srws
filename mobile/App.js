@@ -127,6 +127,10 @@ export default function App() {
   };
 
   const handleSaveSchedule = (scheduleData) => {
+    if (!isOnline) {
+      showToast("⚠️ Device Offline: Controls locked");
+      return;
+    }
     saveSchedule(scheduleData);
     showToast("✓ Schedule updated successfully");
   };
@@ -393,9 +397,12 @@ export default function App() {
           <View style={styles.tabContent}>
             {/* Automation & Timed Scheduler */}
             <SchedulerPanel
-              scheduledOn={commands.scheduledOn || "06:00"}
-              scheduledOff={commands.scheduledOff || "06:30"}
-              autoMode={commands.autoMode !== false}
+              schedule={deviceData?.schedule}
+              scheduledOn={deviceData?.schedule?.onTime || commands.scheduledOn || "06:00"}
+              scheduledOff={deviceData?.schedule?.offTime || commands.scheduledOff || "06:30"}
+              autoMode={deviceData?.schedule?.enabled ?? (commands.autoMode !== false)}
+              days={deviceData?.schedule?.days}
+              isOnline={isOnline}
               onSaveSchedule={handleSaveSchedule}
             />
 

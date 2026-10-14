@@ -37,6 +37,29 @@
 #define PATH_STATUS_SEEN   "/devices/" DEVICE_ID "/status/lastSeen"
 #define PATH_STATUS_WIFI   "/devices/" DEVICE_ID "/status/wifiStrength"
 #define PATH_STATUS_ONLINE "/devices/" DEVICE_ID "/status/isOnline"
+#define PATH_SCHEDULE_ENABLED  "/devices/" DEVICE_ID "/schedule/enabled"
+#define PATH_SCHEDULE_ON_TIME  "/devices/" DEVICE_ID "/schedule/onTime"
+#define PATH_SCHEDULE_OFF_TIME "/devices/" DEVICE_ID "/schedule/offTime"
+
+// ================ SCHEDULE CONFIGURATION ============
+struct Schedule {
+  bool enabled;
+  int onHour;
+  int onMin;
+  int offHour;
+  int offMin;
+};
+
+Schedule currentSchedule = {
+  true,
+  6, 0,   // 06:00 AM Default
+  6, 30   // 06:30 AM Default
+};
+
+unsigned long lastScheduleSync = 0;
+const unsigned long SCHEDULE_SYNC_INTERVAL = 30000; // Check Firebase schedule every 30s
+int lastScheduledOnMinute = -1;
+int lastScheduledOffMinute = -1;
 
 // ================ SENSOR CONFIGURATION ==============
 #define FULL_LEVEL_ACTIVE_LOW true
@@ -138,9 +161,9 @@ void connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n✓ Wi-Fi connected! IP: " + WiFi.localIP().toString());
 
-    // Synchronize system clock with NTP (Required for Firebase Google Auth & Live Heartbeat)
-    Serial.print("Synchronizing NTP time for Firebase SSL...");
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    // Synchronize system clock with NTP in IST (UTC+5:30 = 19800s offset)
+    Serial.print("Synchronizing NTP time (IST UTC+5:30)...");
+    configTime(19800, 0, "pool.ntp.org", "time.nist.gov");
     time_t now = time(nullptr);
     int retries = 0;
     while (now < 1510592825 && retries < 20) {
@@ -230,6 +253,101 @@ void checkFirebaseCommand() {
   }
 }
 
+// ================ SCHEDULE MANAGEMENT ================
+void fetchSchedule() {
+  if (!Firebase.ready() || WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+
+  // 1. Fetch enabled flag
+  if (Firebase.RTDB.getBool(&fbdo, PATH_SCHEDULE_ENABLED)) {
+    currentSchedule.enabled = fbdo.boolData();
+  }
+
+  // 2. Fetch onTime (e.g. "06:00")
+  if (Firebase.RTDB.getString(&fbdo, PATH_SCHEDULE_ON_TIME)) {
+    String t = fbdo.stringData();
+    t.trim();
+    int colon = t.indexOf(':');
+    if (colon > 0) {
+      currentSchedule.onHour = t.substring(0, colon).toInt();
+      currentSchedule.onMin = t.substring(colon + 1).toInt();
+    }
+  }
+
+  // 3. Fetch offTime (e.g. "06:30")
+  if (Firebase.RTDB.getString(&fbdo, PATH_SCHEDULE_OFF_TIME)) {
+    String t = fbdo.stringData();
+    t.trim();
+    int colon = t.indexOf(':');
+    if (colon > 0) {
+      currentSchedule.offHour = t.substring(0, colon).toInt();
+      currentSchedule.offMin = t.substring(colon + 1).toInt();
+    }
+  }
+
+  Serial.print("Schedule synced: ");
+  Serial.print(currentSchedule.enabled ? "ENABLED" : "DISABLED");
+  Serial.print(" | ON: ");
+  Serial.print(currentSchedule.onHour < 10 ? "0" : "");
+  Serial.print(currentSchedule.onHour);
+  Serial.print(":");
+  Serial.print(currentSchedule.onMin < 10 ? "0" : "");
+  Serial.print(currentSchedule.onMin);
+  Serial.print(" | OFF: ");
+  Serial.print(currentSchedule.offHour < 10 ? "0" : "");
+  Serial.print(currentSchedule.offHour);
+  Serial.print(":");
+  Serial.print(currentSchedule.offMin < 10 ? "0" : "");
+  Serial.println(currentSchedule.offMin);
+}
+
+void checkSchedule() {
+  if (!currentSchedule.enabled) {
+    return;
+  }
+
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    return;
+  }
+
+  int curHour = timeinfo.tm_hour;
+  int curMin  = timeinfo.tm_min;
+
+  bool isOnTime  = (curHour == currentSchedule.onHour  && curMin == currentSchedule.onMin);
+  bool isOffTime = (curHour == currentSchedule.offHour && curMin == currentSchedule.offMin);
+
+  // 1. Scheduled Turn ON: Runs once at the scheduled ON minute if tank is not full
+  if (isOnTime && curMin != lastScheduledOnMinute) {
+    lastScheduledOnMinute = curMin;
+    updateSensors();
+    if (!tankFull && !pumpOn) {
+      Serial.println("⏰ [SCHEDULE] Scheduled ON time reached. Starting pump...");
+      manualStop = false;
+      setPump(true);
+      if (Firebase.ready()) {
+        Firebase.RTDB.setString(&fbdo, PATH_COMMAND_MOTOR, "ON");
+      }
+    } else if (tankFull) {
+      Serial.println("⏰ [SCHEDULE] Scheduled ON time reached, but tank is FULL. Refusing start.");
+    }
+  }
+
+  // 2. Scheduled Turn OFF: Runs once at the scheduled OFF minute if pump is running
+  if (isOffTime && curMin != lastScheduledOffMinute) {
+    lastScheduledOffMinute = curMin;
+    if (pumpOn) {
+      Serial.println("⏰ [SCHEDULE] Scheduled OFF time reached. Stopping pump...");
+      manualStop = true;
+      setPump(false);
+      if (Firebase.ready()) {
+        Firebase.RTDB.setString(&fbdo, PATH_COMMAND_MOTOR, "OFF");
+      }
+    }
+  }
+}
+
 // ================ SETUP =============================
 void setup() {
   Serial.begin(115200);
@@ -263,6 +381,7 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     setupFirebase();
     firebaseReady = true;
+    fetchSchedule();
   }
 }
 
@@ -280,14 +399,23 @@ void loop() {
     WiFi.reconnect();
   }
 
-  // 3. Firebase cloud sync
+  // 3. Local schedule evaluation (runs with local hardware RTC)
+  checkSchedule();
+
+  // 4. Firebase cloud sync
   if (WiFi.status() == WL_CONNECTED && firebaseReady && millis() - lastFirebase >= FIREBASE_INTERVAL) {
     lastFirebase = millis();
     checkFirebaseCommand();
     publishStatus();
   }
 
-  // 4. Debug prints
+  // 5. Firebase schedule sync (periodically sync schedule changes made from mobile app)
+  if (WiFi.status() == WL_CONNECTED && firebaseReady && millis() - lastScheduleSync >= SCHEDULE_SYNC_INTERVAL) {
+    lastScheduleSync = millis();
+    fetchSchedule();
+  }
+
+  // 6. Debug prints
   if (millis() - lastPrint >= PRINT_INTERVAL) {
     lastPrint = millis();
     Serial.print("Level: ");

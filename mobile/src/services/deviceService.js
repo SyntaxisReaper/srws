@@ -34,6 +34,12 @@ let simulatedDeviceState = {
     scheduledOff: "06:30",
     autoMode: true,
   },
+  schedule: {
+    enabled: true,
+    onTime: "06:00",
+    offTime: "06:30",
+    days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+  },
   config: {
     tankHeightCm: 30,
     fullThreshold: 90,
@@ -112,6 +118,12 @@ export const subscribeToDeviceState = (deviceId, callback, useSimulation = false
           const normalized = {
             ...data,
             history: normalizeHistory(data.history),
+            schedule: data.schedule || {
+              enabled: data.commands?.autoMode !== false,
+              onTime: data.commands?.scheduledOn || "06:00",
+              offTime: data.commands?.scheduledOff || "06:30",
+              days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+            },
             status: {
               ...data.status,
               waterLevel: data.status?.waterLevel ?? 0,
@@ -430,26 +442,55 @@ export const setContactProbeLevel = (levelPreset) => {
 };
 
 export const updateScheduleConfig = async (deviceId, config, useSimulation = false) => {
+  const targetDevice = deviceId || DEFAULT_DEVICE_ID;
+  const normalizedSchedule = {
+    enabled: config.enabled ?? (config.autoMode !== false),
+    onTime: config.onTime || config.scheduledOn || "06:00",
+    offTime: config.offTime || config.scheduledOff || "06:30",
+    days: config.days || config.repeatDays || ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+  };
+
   if (useSimulation || !isFirebaseConfigured()) {
     simulatedDeviceState = {
       ...simulatedDeviceState,
+      schedule: normalizedSchedule,
       commands: {
         ...simulatedDeviceState.commands,
-        ...config,
+        autoMode: normalizedSchedule.enabled,
+        scheduledOn: normalizedSchedule.onTime,
+        scheduledOff: normalizedSchedule.offTime,
       },
     };
     notifySimulationListeners();
     return true;
   }
 
-  const url = `${firebaseConfig.databaseURL}/devices/${deviceId || DEFAULT_DEVICE_ID}/commands.json`;
-  const response = await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(config),
-  });
+  const scheduleUrl = `${firebaseConfig.databaseURL}/devices/${targetDevice}/schedule.json`;
+  const commandsUrl = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands.json`;
 
-  return response.ok;
+  try {
+    const [res1] = await Promise.all([
+      fetch(scheduleUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(normalizedSchedule),
+      }),
+      fetch(commandsUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          autoMode: normalizedSchedule.enabled,
+          scheduledOn: normalizedSchedule.onTime,
+          scheduledOff: normalizedSchedule.offTime,
+        }),
+      }).catch(() => {}),
+    ]);
+
+    return res1.ok;
+  } catch (err) {
+    console.error("[DeviceService] Schedule update error:", err);
+    return false;
+  }
 };
 
 // Simulation refill loop
