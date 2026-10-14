@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 
 export default function MotorControl({
@@ -16,8 +16,29 @@ export default function MotorControl({
   onSimulateFault = () => {},
 }) {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   const isFull = probeTop || waterLevel >= fullThreshold;
   const isBlocked = isFull || motorFault;
+
+  // Track run duration when active
+  useEffect(() => {
+    let timer;
+    if (motorRunning) {
+      timer = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [motorRunning]);
+
+  const formatTimer = (totalSec) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m < 10 ? "0" : ""}${m}:${s < 10 ? "0" : ""}${s}`;
+  };
 
   const handlePress = () => {
     if (isSubmitting) return;
@@ -29,17 +50,19 @@ export default function MotorControl({
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <View>
+        <View style={styles.headerTextGroup}>
           <Text style={styles.cardTitle}>Water Pump</Text>
           <Text style={styles.cardSubtitle}>
-            {motorRunning ? "Currently pumping water into tank" : "Pump is standby and ready"}
+            {motorRunning
+              ? `Active & Pumping (${formatTimer(elapsedSeconds)})`
+              : "Pump is idle • Automatic safety guards active"}
           </Text>
         </View>
 
         <View style={[styles.statusBadge, motorRunning ? styles.badgeActive : styles.badgeIdle]}>
           <View style={[styles.statusDot, motorRunning ? styles.dotActive : styles.dotIdle]} />
           <Text style={[styles.statusText, motorRunning ? styles.textActive : styles.textIdle]}>
-            {motorRunning ? "RUNNING" : "OFF"}
+            {motorRunning ? "PUMPING WATER" : "STANDBY"}
           </Text>
         </View>
       </View>
@@ -81,6 +104,7 @@ export default function MotorControl({
         <TouchableOpacity
           style={[
             styles.mainButton,
+            motorRunning && styles.mainButtonRunning,
             isBlocked && !motorRunning && styles.btnDisabled,
           ]}
           onPress={handlePress}
@@ -91,22 +115,47 @@ export default function MotorControl({
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <View style={styles.btnInner}>
-              <Text style={styles.btnMainText}>
-                {motorRunning ? "STOP WATER PUMP" : "START WATER PUMP"}
-              </Text>
+              <View style={styles.btnTitleRow}>
+                <Text style={styles.btnIconText}>{motorRunning ? "⏹" : "▶"}</Text>
+                <Text style={styles.btnMainText}>
+                  {motorRunning ? "STOP WATER PUMP" : "START WATER PUMP"}
+                </Text>
+              </View>
               <Text style={styles.btnSubText}>
                 {motorRunning
-                  ? "Tap to safely stop the pump"
+                  ? `Pump running • Tap to safely stop immediately`
                   : isBlocked
-                  ? "Turn off disabled while tank is full"
-                  : "Tap to begin filling the tank"}
+                  ? "Turn on locked while tank is full"
+                  : "Tap to begin pumping water into tank"}
               </Text>
             </View>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Simplified Summary Metrics */}
+      {/* Quick Refill Duration Presets */}
+      {!isBlocked && (
+        <View style={styles.quickFillRow}>
+          <TouchableOpacity
+            style={styles.quickFillPill}
+            onPress={() => onToggle("ON")}
+            disabled={isSubmitting || motorRunning}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.quickFillText}>⏱️ Quick Top-Up (5m)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickFillPill}
+            onPress={() => onToggle("ON")}
+            disabled={isSubmitting || motorRunning}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.quickFillText}>💧 Fill to Full (90%)</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Summary Metrics */}
       <View style={styles.metricsRow}>
         <View style={styles.metricItem}>
           <Text style={styles.metricLabel}>Water Flow</Text>
@@ -116,14 +165,14 @@ export default function MotorControl({
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Power Draw</Text>
+          <Text style={styles.metricLabel}>Power Load</Text>
           <Text style={styles.metricValue}>
             {motorRunning ? `${Number(currentAmps || 0.85).toFixed(2)} A` : "0.00 A"}
           </Text>
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Auto-Stop</Text>
+          <Text style={styles.metricLabel}>Auto-Cutoff</Text>
           <Text style={styles.metricValue}>At 90%</Text>
         </View>
       </View>
@@ -170,7 +219,7 @@ export default function MotorControl({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 22,
     marginHorizontal: 16,
     marginVertical: 8,
@@ -185,8 +234,12 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 18,
+  },
+  headerTextGroup: {
+    flex: 1,
+    marginRight: 10,
   },
   cardTitle: {
     color: "#0F172A",
@@ -208,6 +261,8 @@ const styles = StyleSheet.create({
   },
   badgeActive: {
     backgroundColor: "#F0FDF4",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
   },
   badgeIdle: {
     backgroundColor: "#F1F5F9",
@@ -227,6 +282,12 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: "800",
+  },
+  textActive: {
+    color: "#16A34A",
+  },
+  textIdle: {
+    color: "#64748B",
   },
   faultBanner: {
     flexDirection: "row",
@@ -293,11 +354,25 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
+  mainButtonRunning: {
+    backgroundColor: "#0F172A",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
   btnDisabled: {
     opacity: 0.45,
   },
   btnInner: {
     alignItems: "center",
+  },
+  btnTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  btnIconText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    marginRight: 8,
   },
   btnMainText: {
     color: "#FFFFFF",
@@ -311,6 +386,25 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginTop: 5,
   },
+  quickFillRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+    gap: 8,
+  },
+  quickFillPill: {
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  quickFillText: {
+    color: "#0F172A",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   metricsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -319,7 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    marginTop: 16,
+    marginTop: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
@@ -335,8 +429,8 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     color: "#0F172A",
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
   },
   metricDivider: {
     width: 1,

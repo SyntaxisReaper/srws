@@ -21,17 +21,19 @@ export default function ValveControl({
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <View>
+        <View style={styles.headerTextGroup}>
           <Text style={styles.cardTitle}>Water Supply Valve</Text>
           <Text style={styles.cardSubtitle}>
-            {isOpen ? "Inlet valve is open • Water is flowing in" : "Inlet valve is closed"}
+            {isOpen
+              ? "Inlet valve is OPEN • Municipal water flowing in"
+              : "Inlet valve is CLOSED • City supply shut"}
           </Text>
         </View>
 
         <View style={[styles.statusBadge, isOpen ? styles.badgeOpen : styles.badgeClosed]}>
           <View style={[styles.statusDot, isOpen ? styles.dotOpen : styles.dotClosed]} />
           <Text style={[styles.statusText, isOpen ? styles.textOpen : styles.textClosed]}>
-            {isOpen ? "OPEN" : "CLOSED"}
+            {isOpen ? "INLET OPEN" : "SHUT"}
           </Text>
         </View>
       </View>
@@ -46,11 +48,11 @@ export default function ValveControl({
         </View>
       )}
 
-      {/* Simplified Flow Graphic */}
+      {/* Simplified Flow Graphic with Wave Indicator */}
       <View style={styles.flowGraphicRow}>
         <View style={styles.flowEndpoint}>
           <Text style={styles.flowEndpointIcon}>🚰</Text>
-          <Text style={styles.flowEndpointLabel}>City Main</Text>
+          <Text style={styles.flowEndpointLabel}>City Line</Text>
         </View>
 
         <View style={styles.pipeLineTrack}>
@@ -86,14 +88,17 @@ export default function ValveControl({
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <View style={styles.btnInner}>
-              <Text style={styles.btnMainText}>
-                {isOpen ? "CLOSE WATER VALVE" : "OPEN WATER VALVE"}
-              </Text>
+              <View style={styles.btnTitleRow}>
+                <Text style={styles.btnIconText}>{isOpen ? "🛑" : "💧"}</Text>
+                <Text style={styles.btnMainText}>
+                  {isOpen ? "CLOSE WATER VALVE" : "OPEN WATER VALVE"}
+                </Text>
+              </View>
               <Text style={styles.btnSubText}>
                 {isOpen
-                  ? "Tap to shut off municipal inlet water"
+                  ? "Tap to shut off incoming municipal water"
                   : isFull
-                  ? "Locked off while tank is full"
+                  ? "Valve locked while tank is full"
                   : "Tap to allow incoming municipal water"}
               </Text>
             </View>
@@ -107,7 +112,7 @@ export default function ValveControl({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 22,
     marginHorizontal: 16,
     marginVertical: 8,
@@ -122,8 +127,12 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 18,
+  },
+  headerTextGroup: {
+    flex: 1,
+    marginRight: 10,
   },
   cardTitle: {
     color: "#0F172A",
@@ -145,6 +154,8 @@ const styles = StyleSheet.create({
   },
   badgeOpen: {
     backgroundColor: "#E0F2FE",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
   },
   badgeClosed: {
     backgroundColor: "#F1F5F9",
@@ -164,6 +175,12 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: "800",
+  },
+  textOpen: {
+    color: "#0284C7",
+  },
+  textClosed: {
+    color: "#64748B",
   },
   lockoutBanner: {
     flexDirection: "row",
@@ -191,7 +208,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -209,13 +226,13 @@ const styles = StyleSheet.create({
   flowEndpointLabel: {
     color: "#64748B",
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   pipeLineTrack: {
     flex: 1,
-    height: 4,
+    height: 6,
     backgroundColor: "#E2E8F0",
-    borderRadius: 2,
+    borderRadius: 3,
     marginHorizontal: 8,
     overflow: "hidden",
   },
@@ -228,9 +245,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#0EA5E9",
   },
   valveCenterIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
@@ -265,6 +282,15 @@ const styles = StyleSheet.create({
   },
   btnInner: {
     alignItems: "center",
+  },
+  btnTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  btnIconText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    marginRight: 8,
   },
   btnMainText: {
     color: "#FFFFFF",

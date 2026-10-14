@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
 export default function WaterLevelGauge({
@@ -11,6 +11,7 @@ export default function WaterLevelGauge({
   capacityLiters = 20,
   onLevelAdjust = null,
 }) {
+  const [showSimControls, setShowSimControls] = useState(false);
   const liters = Math.round((waterLevel / 100) * capacityLiters);
 
   let statusLabel = "Normal Level";
@@ -37,12 +38,12 @@ export default function WaterLevelGauge({
 
   return (
     <View style={styles.card}>
-      {/* Header - Bigger, Prominent & Highlighted */}
+      {/* Header - Prominent & Clear */}
       <View style={styles.headerRow}>
         <View style={styles.headerTextGroup}>
           <Text style={styles.cardTitle}>Water Tank Level</Text>
           <Text style={styles.cardSubtitle}>
-            {liters} of {capacityLiters} Liters available in tank
+            {liters} of {capacityLiters} Liters available in reservoir
           </Text>
         </View>
 
@@ -54,14 +55,17 @@ export default function WaterLevelGauge({
 
       {/* Main Tank Visualizer */}
       <View style={styles.tankOuterContainer}>
-        {/* Tank Pillar Graphic */}
+        {/* Modern Cylindrical Reservoir Graphic */}
         <View style={styles.tankFrame}>
-          {/* Top Lid */}
+          {/* Top Cap */}
           <View style={styles.tankLid} />
 
-          {/* Liquid Chamber */}
+          {/* Transparent Reservoir Body */}
           <View style={styles.tankInterior}>
-            {/* Full Marker Line */}
+            {/* Gloss reflection highlight on left */}
+            <View style={styles.glassHighlight} />
+
+            {/* High-Contrast Level Markers */}
             <View style={[styles.levelLine, { top: "12%" }]}>
               <View style={[styles.probeDot, (probeTop || waterLevel >= 90) && styles.probeDotWet]} />
               <View style={styles.markerBadge}>
@@ -69,7 +73,6 @@ export default function WaterLevelGauge({
               </View>
             </View>
 
-            {/* Half Marker Line */}
             <View style={[styles.levelLine, { top: "50%" }]}>
               <View style={[styles.probeDot, (probeMid || waterLevel >= 50) && styles.probeDotWet]} />
               <View style={styles.markerBadge}>
@@ -77,7 +80,6 @@ export default function WaterLevelGauge({
               </View>
             </View>
 
-            {/* Low Marker Line */}
             <View style={[styles.levelLine, { top: "80%" }]}>
               <View style={[styles.probeDot, (probeLow || waterLevel >= 20) && styles.probeDotWet]} />
               <View style={styles.markerBadge}>
@@ -85,7 +87,7 @@ export default function WaterLevelGauge({
               </View>
             </View>
 
-            {/* Fluid fill with smooth surface */}
+            {/* Fluid with wave crest */}
             <View
               style={[
                 styles.fluidFill,
@@ -99,84 +101,105 @@ export default function WaterLevelGauge({
             </View>
           </View>
 
-          {/* Base */}
+          {/* Sturdy Tank Stand Base */}
           <View style={styles.tankBase} />
         </View>
 
-        {/* Readout Metrics - MASSIVE & HIGHLIGHTED */}
+        {/* Readout Metrics */}
         <View style={styles.metricsColumn}>
-          {/* Highlighted Percentage Hero Display */}
+          {/* Massive Hero Percentage */}
           <View style={styles.percentageHero}>
             <Text style={styles.percentageNumber}>{waterLevel}</Text>
             <Text style={styles.percentageSymbol}>%</Text>
           </View>
 
-          {/* Volume Highlight Box */}
+          {/* Highlighted Volume Card */}
           <View style={styles.volumeBox}>
-            <Text style={styles.volumeLabel}>Current Volume</Text>
-            <Text style={styles.volumeValue}>
-              {liters} <Text style={styles.volumeUnit}>Liters</Text>
-            </Text>
+            <View style={styles.volumeIconCircle}>
+              <Text style={styles.volumeIcon}>💧</Text>
+            </View>
+            <View style={styles.volumeTextGroup}>
+              <Text style={styles.volumeLabel}>Current Volume</Text>
+              <Text style={styles.volumeValue}>
+                {liters} <Text style={styles.volumeUnit}>/ {capacityLiters} Liters</Text>
+              </Text>
+            </View>
           </View>
 
-          {/* Sensor Points */}
-          <View style={styles.sensorStatusBox}>
-            <View style={styles.sensorRow}>
-              <Text style={styles.sensorName}>Top Sensor:</Text>
-              <Text style={[styles.sensorVal, probeTop ? styles.valActive : styles.valInactive]}>
-                {probeTop ? "Reached" : "Clear"}
+          {/* Visual 3-Stage Sensor Level Indicators */}
+          <View style={styles.stageIndicatorCard}>
+            <View style={styles.stageRow}>
+              <View style={[styles.stageDot, (probeTop || waterLevel >= 90) && styles.stageDotActive]} />
+              <Text style={styles.stageLabel}>Upper Limit</Text>
+              <Text style={[styles.stageValue, (probeTop || waterLevel >= 90) && styles.stageValActive]}>
+                {probeTop || waterLevel >= 90 ? "Full Reached" : "Clear"}
               </Text>
             </View>
-            <View style={styles.sensorRow}>
-              <Text style={styles.sensorName}>Middle Sensor:</Text>
-              <Text style={[styles.sensorVal, probeMid ? styles.valActive : styles.valInactive]}>
-                {probeMid ? "Reached" : "Clear"}
+            <View style={styles.stageDivider} />
+            <View style={styles.stageRow}>
+              <View style={[styles.stageDot, (probeMid || waterLevel >= 50) && styles.stageDotActive]} />
+              <Text style={styles.stageLabel}>Middle Level</Text>
+              <Text style={[styles.stageValue, (probeMid || waterLevel >= 50) && styles.stageValActive]}>
+                {probeMid || waterLevel >= 50 ? "Satisfied" : "Below Half"}
               </Text>
             </View>
-            <View style={styles.sensorRow}>
-              <Text style={styles.sensorName}>Bottom Sensor:</Text>
-              <Text style={[styles.sensorVal, probeLow ? styles.valActive : styles.valInactive]}>
-                {probeLow ? "Covered" : "Empty"}
+            <View style={styles.stageDivider} />
+            <View style={styles.stageRow}>
+              <View style={[styles.stageDot, (probeLow || waterLevel >= 20) && styles.stageDotActive]} />
+              <Text style={styles.stageLabel}>Safety Base</Text>
+              <Text style={[styles.stageValue, (probeLow || waterLevel >= 20) && styles.stageValActive]}>
+                {probeLow || waterLevel >= 20 ? "Safe (Water Present)" : "EMPTY CRITICAL"}
               </Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Quick Level Adjust (for demo/simulation) - Black buttons with white text */}
+      {/* Demo Level Controls Drawer */}
       {onLevelAdjust && (
-        <View style={styles.calibrationRow}>
-          <Text style={styles.calibrationLabel}>Simulate Water Level:</Text>
-          <View style={styles.calibrationButtons}>
-            <TouchableOpacity
-              style={styles.calBtn}
-              onPress={() => onLevelAdjust("EMPTY")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.calBtnText}>Empty</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.calBtn}
-              onPress={() => onLevelAdjust("LOW")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.calBtnText}>Low (25%)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.calBtn}
-              onPress={() => onLevelAdjust("MEDIUM")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.calBtnText}>Mid (60%)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.calBtn}
-              onPress={() => onLevelAdjust("FULL")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.calBtnText}>Full (100%)</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.demoSection}>
+          <TouchableOpacity
+            style={styles.demoToggleHeader}
+            onPress={() => setShowSimControls(!showSimControls)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.demoToggleText}>
+              {showSimControls ? "Hide Level Simulator ▲" : "🧪 Test & Simulate Water Level ▼"}
+            </Text>
+          </TouchableOpacity>
+
+          {showSimControls && (
+            <View style={styles.calibrationButtons}>
+              <TouchableOpacity
+                style={styles.calBtn}
+                onPress={() => onLevelAdjust("EMPTY")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.calBtnText}>Empty</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.calBtn}
+                onPress={() => onLevelAdjust("LOW")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.calBtnText}>Low 25%</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.calBtn}
+                onPress={() => onLevelAdjust("MEDIUM")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.calBtnText}>Mid 60%</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.calBtn}
+                onPress={() => onLevelAdjust("FULL")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.calBtnText}>Full 100%</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -186,7 +209,7 @@ export default function WaterLevelGauge({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 22,
     marginHorizontal: 16,
     marginVertical: 8,
@@ -210,7 +233,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: "#0F172A",
-    fontSize: 20, // Bigger & prominent
+    fontSize: 20,
     fontWeight: "900",
     letterSpacing: 0.2,
   },
@@ -218,7 +241,7 @@ const styles = StyleSheet.create({
     color: "#64748B",
     fontSize: 13,
     fontWeight: "500",
-    marginTop: 4,
+    marginTop: 3,
   },
   badge: {
     flexDirection: "row",
@@ -243,27 +266,37 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   tankFrame: {
-    width: 120,
-    height: 200,
+    width: 124,
+    height: 208,
     alignItems: "center",
   },
   tankLid: {
-    width: 80,
+    width: 86,
     height: 9,
     backgroundColor: "#94A3B8",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   },
   tankInterior: {
-    width: 110,
+    width: 114,
     flex: 1,
     backgroundColor: "#F1F5F9",
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: "#CBD5E1",
     overflow: "hidden",
     position: "relative",
     justifyContent: "flex-end",
+  },
+  glassHighlight: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 4,
+    width: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    borderRadius: 3,
+    zIndex: 15,
   },
   levelLine: {
     position: "absolute",
@@ -271,7 +304,7 @@ const styles = StyleSheet.create({
     right: 8,
     flexDirection: "row",
     alignItems: "center",
-    zIndex: 10,
+    zIndex: 20,
   },
   probeDot: {
     width: 7,
@@ -284,14 +317,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#0EA5E9",
   },
   markerBadge: {
-    backgroundColor: "rgba(15, 23, 42, 0.7)",
+    backgroundColor: "rgba(15, 23, 42, 0.72)",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   levelMarkerText: {
     fontSize: 10,
-    color: "#FFFFFF", // Sharp white text with dark backdrop pill for 100% readability
+    color: "#FFFFFF",
     fontWeight: "800",
   },
   fluidFill: {
@@ -307,7 +340,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.45)",
   },
   tankBase: {
-    width: 100,
+    width: 104,
     height: 8,
     backgroundColor: "#64748B",
     borderBottomLeftRadius: 6,
@@ -325,7 +358,7 @@ const styles = StyleSheet.create({
   },
   percentageNumber: {
     color: "#0F172A",
-    fontSize: 56, // MASSIVE HERO NUMBER
+    fontSize: 56,
     fontWeight: "900",
     letterSpacing: -1,
   },
@@ -336,13 +369,30 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   volumeBox: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#F8FAFC",
     paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     marginBottom: 10,
+  },
+  volumeIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#E0F2FE",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  volumeIcon: {
+    fontSize: 16,
+  },
+  volumeTextGroup: {
+    flex: 1,
   },
   volumeLabel: {
     color: "#64748B",
@@ -353,63 +403,82 @@ const styles = StyleSheet.create({
   },
   volumeValue: {
     color: "#0F172A",
-    fontSize: 18, // Highlighted volume
-    fontWeight: "900",
-    marginTop: 2,
+    fontSize: 16,
+    fontWeight: "800",
   },
   volumeUnit: {
     color: "#64748B",
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "500",
   },
-  sensorStatusBox: {
+  stageIndicatorCard: {
     backgroundColor: "#F8FAFC",
-    padding: 10,
-    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  sensorRow: {
+  stageRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 3,
   },
-  sensorName: {
+  stageDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#CBD5E1",
+    marginRight: 6,
+  },
+  stageDotActive: {
+    backgroundColor: "#10B981",
+  },
+  stageLabel: {
+    flex: 1,
     color: "#64748B",
     fontSize: 11,
     fontWeight: "600",
   },
-  sensorVal: {
+  stageValue: {
     fontSize: 11,
-    fontWeight: "800",
-  },
-  valActive: {
-    color: "#0EA5E9",
-  },
-  valInactive: {
+    fontWeight: "700",
     color: "#94A3B8",
   },
-  calibrationRow: {
-    marginTop: 18,
-    paddingTop: 14,
+  stageValActive: {
+    color: "#0F172A",
+  },
+  stageDivider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+    marginVertical: 2,
+  },
+  demoSection: {
+    marginTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
   },
-  calibrationLabel: {
+  demoToggleHeader: {
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  demoToggleText: {
     color: "#64748B",
     fontSize: 12,
     fontWeight: "700",
-    marginBottom: 8,
   },
   calibrationButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginTop: 8,
   },
   calBtn: {
     backgroundColor: "#000000",
     paddingVertical: 9,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
     flex: 1,
     marginHorizontal: 3,
     alignItems: "center",

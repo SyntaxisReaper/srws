@@ -375,6 +375,9 @@ export default function App() {
           <Text style={[styles.navText, activeTab === "overview" && styles.navTextActive]}>
             Overview
           </Text>
+          {status.motorRunning && (
+            <View style={styles.tabRunningDot} />
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -397,6 +400,9 @@ export default function App() {
           <Text style={[styles.navText, activeTab === "activity" && styles.navTextActive]}>
             Activity
           </Text>
+          {(status.motorFault || (status.waterLevel ?? 50) <= 20) && (
+            <View style={styles.tabAlertDot} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -652,6 +658,20 @@ const styles = StyleSheet.create({
   navTextActive: {
     color: "#FFFFFF",
     fontWeight: "800",
+  },
+  tabRunningDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#10B981",
+    marginLeft: 6,
+  },
+  tabAlertDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#EF4444",
+    marginLeft: 6,
   },
   footerNote: {
     alignItems: "center",
