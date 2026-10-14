@@ -27,6 +27,8 @@ import HomeAssistantCard from "./src/components/HomeAssistantCard";
 import HelpFaqModal from "./src/components/HelpFaqModal";
 import VoiceControlModal from "./src/components/VoiceControlModal";
 import StartupScreen from "./src/components/StartupScreen";
+import OfflineBanner from "./src/components/OfflineBanner";
+import { useDeviceOnlineStatus } from "./src/hooks/useDeviceOnlineStatus";
 import { DEFAULT_DEVICE_ID } from "./src/services/firebaseConfig";
 import {
   registerForPushNotificationsAsync,
@@ -66,6 +68,11 @@ export default function App() {
     saveSchedule,
   } = useDeviceStatus(DEFAULT_DEVICE_ID, useSimulation);
 
+  const status = deviceData?.status || {};
+  const commands = deviceData?.commands || {};
+  const config = deviceData?.config || {};
+  const { isOnline, secondsAgo } = useDeviceOnlineStatus(status.lastSeen, useSimulation, 30);
+
   const showToast = (msg) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToastMessage(msg);
@@ -75,6 +82,10 @@ export default function App() {
   };
 
   const handleToggleMotor = (nextCmd, override = false) => {
+    if (!isOnline) {
+      showToast("⚠️ Device Offline: Controls locked");
+      return;
+    }
     const isOverrideActive = override || commands.manualOverride === true;
     toggleMotor(nextCmd, isOverrideActive);
     showToast(
@@ -87,6 +98,10 @@ export default function App() {
   };
 
   const handleToggleValve = (nextCmd, override = false) => {
+    if (!isOnline) {
+      showToast("⚠️ Device Offline: Controls locked");
+      return;
+    }
     const isOverrideActive = override || commands.manualOverride === true;
     toggleValve(nextCmd, isOverrideActive);
     showToast(
@@ -99,6 +114,10 @@ export default function App() {
   };
 
   const handleToggleManualOverride = (enabled) => {
+    if (!isOnline) {
+      showToast("⚠️ Device Offline: Controls locked");
+      return;
+    }
     setManualOverride(enabled);
     showToast(
       enabled
@@ -119,9 +138,6 @@ export default function App() {
     }, 800);
   };
 
-  const status = deviceData?.status || {};
-  const commands = deviceData?.commands || {};
-  const config = deviceData?.config || {};
   const rawHistory = deviceData?.history;
   const history = Array.isArray(rawHistory)
     ? rawHistory
@@ -262,6 +278,9 @@ export default function App() {
         </View>
       </View>
 
+      {/* High-Visibility Sticky Device Offline Banner */}
+      <OfflineBanner isOnline={isOnline} secondsAgo={secondsAgo} />
+
       {/* Scrollable Content for the Active Tab */}
       <ScrollView
         style={styles.scrollView}
@@ -287,6 +306,7 @@ export default function App() {
               valveOpen={status.valveOpen || status.valveState === "OPEN"}
               capacityLiters={config.tankCapacityLiters || 20}
               manualOverride={commands.manualOverride === true}
+              isOnline={isOnline}
               onToggleManualOverride={handleToggleManualOverride}
               onToggleMotorManual={(cmd) => handleToggleMotor(cmd, true)}
               onToggleValveManual={(cmd) => handleToggleValve(cmd, true)}
@@ -304,6 +324,7 @@ export default function App() {
               wifiStrength={status.wifiStrength || -65}
               networkUplink={status.networkUplink || "Wi-Fi Connected"}
               isSimulation={useSimulation}
+              isOnline={isOnline}
               onToggleSimulation={() => setUseSimulation(!useSimulation)}
             />
 
@@ -330,6 +351,7 @@ export default function App() {
               capacityLiters={config.tankCapacityLiters || 20}
               motorRunning={status.motorRunning || false}
               valveOpen={status.valveOpen || status.valveState === "OPEN"}
+              isOnline={isOnline}
               onLevelAdjust={useSimulation ? changeWaterLevel : null}
             />
 
@@ -346,6 +368,7 @@ export default function App() {
               probeTop={status.probeTop || false}
               isSubmitting={isSubmitting}
               manualOverride={commands.manualOverride === true}
+              isOnline={isOnline}
               onToggleManualOverride={handleToggleManualOverride}
               onToggle={handleToggleMotor}
               onSimulateFault={simulateFault}
@@ -358,6 +381,7 @@ export default function App() {
               probeTop={status.probeTop || false}
               isSubmitting={isSubmitting}
               manualOverride={commands.manualOverride === true}
+              isOnline={isOnline}
               onToggleManualOverride={handleToggleManualOverride}
               onToggleValve={handleToggleValve}
             />
@@ -576,6 +600,7 @@ export default function App() {
         valveOpen={status.valveOpen || status.valveState === "OPEN"}
         capacityLiters={config.tankCapacityLiters || 20}
         manualOverride={commands.manualOverride === true}
+        isOnline={isOnline}
         onToggleManualOverride={handleToggleManualOverride}
         onToggleMotor={handleToggleMotor}
         onToggleValve={handleToggleValve}

@@ -11,6 +11,7 @@ export default function WaterLevelGauge({
   capacityLiters = 20,
   motorRunning = false,
   valveOpen = false,
+  isOnline = true,
   onLevelAdjust = null,
 }) {
   const [showSimControls, setShowSimControls] = useState(false);
@@ -21,7 +22,11 @@ export default function WaterLevelGauge({
   let statusTextColor = "#16A34A";
   let waterColor = "#0EA5E9"; // Fresh vibrant sky blue
 
-  if (probeTop || waterLevel >= 90) {
+  if (!isOnline) {
+    statusLabel = "Offline (Cached)";
+    statusBadgeBg = "#FEF2F2";
+    statusTextColor = "#DC2626";
+  } else if (probeTop || waterLevel >= 90) {
     statusLabel = "Tank Full";
     statusBadgeBg = "#F0FDF4";
     statusTextColor = "#16A34A";
@@ -45,7 +50,9 @@ export default function WaterLevelGauge({
         <View style={styles.headerTextGroup}>
           <Text style={styles.cardTitle}>Water Tank Level</Text>
           <Text style={styles.cardSubtitle}>
-            {liters} of {capacityLiters} Liters available in reservoir
+            {!isOnline
+              ? `⚠️ Hardware Offline • Showing last known ${waterLevel}% level`
+              : `${liters} of ${capacityLiters} Liters available in reservoir`}
           </Text>
         </View>
 

@@ -36,6 +36,7 @@
 #define PATH_STATUS_LEVEL  "/devices/" DEVICE_ID "/status/waterLevel"
 #define PATH_STATUS_SEEN   "/devices/" DEVICE_ID "/status/lastSeen"
 #define PATH_STATUS_WIFI   "/devices/" DEVICE_ID "/status/wifiStrength"
+#define PATH_STATUS_ONLINE "/devices/" DEVICE_ID "/status/isOnline"
 
 // ================ SENSOR CONFIGURATION ==============
 #define FULL_LEVEL_ACTIVE_LOW true
@@ -185,6 +186,7 @@ void publishStatus() {
   ok &= Firebase.RTDB.setBool(&fbdo, PATH_STATUS_FULL, tankFull);
   ok &= Firebase.RTDB.setInt(&fbdo, PATH_STATUS_LEVEL, waterLevelPercent);
   ok &= Firebase.RTDB.setInt(&fbdo, PATH_STATUS_WIFI, WiFi.RSSI());
+  ok &= Firebase.RTDB.setBool(&fbdo, PATH_STATUS_ONLINE, true);
 
   // Heartbeat timestamp so the mobile app stays permanently online
   if (now > 100000) {

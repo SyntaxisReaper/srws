@@ -30,6 +30,7 @@ export default function VoiceControlModal({
   valveOpen = false,
   capacityLiters = 20,
   manualOverride = false,
+  isOnline = true,
   onToggleManualOverride = () => {},
   onToggleMotor = () => {},
   onToggleValve = () => {},
@@ -132,6 +133,16 @@ export default function VoiceControlModal({
   const executeVoiceCommand = (rawText) => {
     const text = (rawText || "").toLowerCase().trim();
     setTranscript(`"${rawText}"`);
+
+    // Check offline status for hardware actuation
+    const isActuation = text.includes("start") || text.includes("stop") || text.includes("pump") || text.includes("valve") || text.includes("motor");
+    if (!isOnline && isActuation && !text.includes("status") && !text.includes("level")) {
+      const spoken = "HydroNode hardware is currently offline. Commands cannot be delivered to the device. Please check Wi-Fi or power.";
+      setResponseMessage("⚠️ Device Offline: Controls locked");
+      setMatchedAction("OFFLINE_LOCKED");
+      speakResponse(spoken);
+      return;
+    }
 
     // 0. MANUAL OVERRIDE & AUTO MODE COMMANDS
     if (

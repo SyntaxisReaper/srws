@@ -7,6 +7,7 @@ export default function StatusBar({
   wifiStrength = -65,
   networkUplink = "Wi-Fi Connected",
   isSimulation = false,
+  isOnline: propIsOnline,
 }) {
   const [secondsAgo, setSecondsAgo] = useState(0);
 
@@ -29,7 +30,8 @@ export default function StatusBar({
     return () => clearInterval(timer);
   }, [lastSeen]);
 
-  const isOnline = isSimulation || secondsAgo < 120;
+  // 30 seconds threshold per Feature Implementation Plan
+  const isOnline = propIsOnline !== undefined ? propIsOnline : (isSimulation || secondsAgo < 30);
 
   return (
     <View style={styles.container}>
@@ -46,13 +48,15 @@ export default function StatusBar({
               ? secondsAgo <= 4
                 ? "Live telemetry synced just now"
                 : `Last synced ${secondsAgo} seconds ago`
+              : secondsAgo < 9999
+              ? `No signal for ${secondsAgo}s • Check Wi-Fi or power`
               : "Check Wi-Fi or ESP32 hardware power"}
           </Text>
         </View>
       </View>
 
       <View style={styles.rightBadge}>
-        <Text style={styles.wifiIcon}>📶</Text>
+        <Text style={styles.wifiIcon}>{isOnline ? "📶" : "⚠️"}</Text>
         <Text style={styles.wifiText}>{isOnline ? "Strong" : "No Link"}</Text>
       </View>
     </View>

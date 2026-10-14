@@ -8,6 +8,7 @@ export default function HomeAssistantCard({
   valveOpen = false,
   capacityLiters = 20,
   manualOverride = false,
+  isOnline = true,
   onToggleManualOverride = () => {},
   onToggleMotorManual = () => {},
   onToggleValveManual = () => {},
@@ -31,7 +32,12 @@ export default function HomeAssistantCard({
   let statusBadgeBg = "#F0FDF4";
   let statusBadgeColor = "#16A34A";
 
-  if (manualOverride) {
+  if (!isOnline) {
+    message = "HydroNode hardware is currently offline. Showing last known telemetry. Controls are locked until connection is restored.";
+    statusBadge = "⚠️ OFFLINE";
+    statusBadgeBg = "#FEF2F2";
+    statusBadgeColor = "#DC2626";
+  } else if (manualOverride) {
     message = "Manual Override is active. Automatic guards are paused so you can turn the pump and valve ON or OFF at will.";
     statusBadge = "⚡ MANUAL OVERRIDE";
     statusBadgeBg = "#FEF3C7";
@@ -121,13 +127,18 @@ export default function HomeAssistantCard({
         <View style={styles.modeStatusLeft}>
           <View style={[styles.modeDot, manualOverride ? styles.modeDotOverride : styles.modeDotAuto]} />
           <Text style={styles.modeStatusText}>
-            {manualOverride ? "Manual Mode Active" : "Auto-Guards Active"}
+            {!isOnline ? "Device Offline" : manualOverride ? "Manual Mode Active" : "Auto-Guards Active"}
           </Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.overrideToggleBtn, manualOverride && styles.overrideToggleBtnActive]}
-          onPress={() => onToggleManualOverride(!manualOverride)}
+          style={[
+            styles.overrideToggleBtn,
+            manualOverride && styles.overrideToggleBtnActive,
+            !isOnline && styles.btnDisabled,
+          ]}
+          onPress={() => isOnline && onToggleManualOverride(!manualOverride)}
+          disabled={!isOnline}
           activeOpacity={0.8}
         >
           <Text style={[styles.overrideToggleText, manualOverride && styles.overrideToggleTextActive]}>
@@ -145,17 +156,19 @@ export default function HomeAssistantCard({
               style={[
                 styles.manualActionBtn,
                 motorRunning ? styles.manualBtnRunning : styles.manualBtnSolid,
+                !isOnline && styles.btnDisabled,
               ]}
-              onPress={() => onToggleMotorManual(motorRunning ? "OFF" : "ON")}
+              onPress={() => isOnline && onToggleMotorManual(motorRunning ? "OFF" : "ON")}
+              disabled={!isOnline}
               activeOpacity={0.85}
             >
               <Text style={styles.manualBtnIcon}>{motorRunning ? "⏹️" : "⚡"}</Text>
               <View style={styles.manualBtnTextCol}>
                 <Text style={styles.manualBtnAction}>
-                  {motorRunning ? "TURN OFF PUMP" : "TURN ON PUMP"}
+                  {!isOnline ? "OFFLINE" : motorRunning ? "TURN OFF PUMP" : "TURN ON PUMP"}
                 </Text>
                 <Text style={styles.manualBtnSub}>
-                  {motorRunning ? "Running • Tap to stop" : "Stopped • Tap to run"}
+                  {!isOnline ? "Controls locked" : motorRunning ? "Running • Tap to stop" : "Stopped • Tap to run"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -165,17 +178,19 @@ export default function HomeAssistantCard({
               style={[
                 styles.manualActionBtn,
                 valveOpen ? styles.manualBtnRunning : styles.manualBtnSolid,
+                !isOnline && styles.btnDisabled,
               ]}
-              onPress={() => onToggleValveManual(valveOpen ? "CLOSED" : "OPEN")}
+              onPress={() => isOnline && onToggleValveManual(valveOpen ? "CLOSED" : "OPEN")}
+              disabled={!isOnline}
               activeOpacity={0.85}
             >
               <Text style={styles.manualBtnIcon}>{valveOpen ? "🔒" : "🚰"}</Text>
               <View style={styles.manualBtnTextCol}>
                 <Text style={styles.manualBtnAction}>
-                  {valveOpen ? "SHUT VALVE" : "OPEN VALVE"}
+                  {!isOnline ? "OFFLINE" : valveOpen ? "SHUT VALVE" : "OPEN VALVE"}
                 </Text>
                 <Text style={styles.manualBtnSub}>
-                  {valveOpen ? "Inlet open • Tap to shut" : "Shut • Tap to open"}
+                  {!isOnline ? "Controls locked" : valveOpen ? "Inlet open • Tap to shut" : "Shut • Tap to open"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -185,8 +200,9 @@ export default function HomeAssistantCard({
         <View style={styles.actionRow}>
           {motorRunning ? (
             <TouchableOpacity
-              style={[styles.primaryActionBtn, styles.stopBtn]}
-              onPress={onStopPump}
+              style={[styles.primaryActionBtn, styles.stopBtn, !isOnline && styles.btnDisabled]}
+              onPress={() => isOnline && onStopPump()}
+              disabled={!isOnline}
               activeOpacity={0.85}
             >
               <Text style={styles.btnIcon}>⏹️</Text>
@@ -194,14 +210,18 @@ export default function HomeAssistantCard({
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.primaryActionBtn, waterLevel >= 90 && styles.btnDisabled]}
-              onPress={() => onQuickTopUp(10)}
-              disabled={waterLevel >= 90 || motorFault}
+              style={[styles.primaryActionBtn, (!isOnline || waterLevel >= 90) && styles.btnDisabled]}
+              onPress={() => isOnline && onQuickTopUp(10)}
+              disabled={!isOnline || waterLevel >= 90 || motorFault}
               activeOpacity={0.85}
             >
               <Text style={styles.btnIcon}>💧</Text>
               <Text style={styles.btnText}>
-                {waterLevel >= 90 ? "TANK FULL • READY" : "1-TAP REFILL (10 MINS)"}
+                {!isOnline
+                  ? "DEVICE OFFLINE • LOCKED"
+                  : waterLevel >= 90
+                  ? "TANK FULL • READY"
+                  : "1-TAP REFILL (10 MINS)"}
               </Text>
             </TouchableOpacity>
           )}

@@ -13,6 +13,7 @@ export default function MotorControl({
   probeTop = false,
   isSubmitting = false,
   manualOverride = false,
+  isOnline = true,
   onToggleManualOverride = () => {},
   onToggle = () => {},
   onSimulateFault = () => {},
@@ -63,7 +64,7 @@ export default function MotorControl({
   };
 
   const handleQuickTopUp = (minutes) => {
-    if (isSubmitting || isBlocked) return;
+    if (isSubmitting || isBlocked || !isOnline) return;
     setAutoStopCountdown(minutes * 60);
     if (!motorRunning) {
       onToggle("ON", manualOverride);
@@ -79,7 +80,9 @@ export default function MotorControl({
         <View style={styles.headerTextGroup}>
           <Text style={styles.cardTitle}>Water Pump</Text>
           <Text style={styles.cardSubtitle}>
-            {motorRunning
+            {!isOnline
+              ? "⚠️ Device Offline • Pump controls disabled"
+              : motorRunning
               ? autoStopCountdown !== null
                 ? `Auto-Stop in ${formatTimer(autoStopCountdown)} • Total: ${formatTimer(elapsedSeconds)}`
                 : `Active & Pumping (${formatTimer(elapsedSeconds)})`
@@ -92,7 +95,7 @@ export default function MotorControl({
         <View style={[styles.statusBadge, motorRunning ? styles.badgeActive : styles.badgeIdle]}>
           <View style={[styles.statusDot, motorRunning ? styles.dotActive : styles.dotIdle]} />
           <Text style={[styles.statusText, motorRunning ? styles.textActive : styles.textIdle]}>
-            {motorRunning ? "PUMPING WATER" : "STANDBY"}
+            {!isOnline ? "OFFLINE" : motorRunning ? "PUMPING WATER" : "STANDBY"}
           </Text>
         </View>
       </View>
@@ -157,10 +160,10 @@ export default function MotorControl({
           style={[
             styles.mainButton,
             motorRunning && styles.mainButtonRunning,
-            isBlocked && !motorRunning && styles.btnDisabled,
+            (!isOnline || (isBlocked && !motorRunning)) && styles.btnDisabled,
           ]}
           onPress={handlePress}
-          disabled={isSubmitting || (isBlocked && !motorRunning)}
+          disabled={isSubmitting || !isOnline || (isBlocked && !motorRunning)}
           activeOpacity={0.85}
         >
           {isSubmitting ? (
@@ -170,7 +173,9 @@ export default function MotorControl({
               <View style={styles.btnTitleRow}>
                 <Text style={styles.btnIconText}>{motorRunning ? "⏹" : "▶"}</Text>
                 <Text style={styles.btnMainText}>
-                  {motorRunning
+                  {!isOnline
+                    ? "DEVICE OFFLINE"
+                    : motorRunning
                     ? manualOverride
                       ? "STOP WATER PUMP (OVERRIDE)"
                       : "STOP WATER PUMP"
@@ -180,7 +185,9 @@ export default function MotorControl({
                 </Text>
               </View>
               <Text style={styles.btnSubText}>
-                {motorRunning
+                {!isOnline
+                  ? "⚠️ Device disconnected • Reconnect ESP32 to run pump"
+                  : motorRunning
                   ? autoStopCountdown !== null
                     ? `Auto-stopping in ${formatTimer(autoStopCountdown)} • Tap to stop now`
                     : "Pump running • Tap to safely stop immediately"
@@ -204,15 +211,17 @@ export default function MotorControl({
               style={[
                 styles.quickFillPill,
                 autoStopCountdown === 300 && styles.quickFillPillActive,
+                !isOnline && styles.quickFillPillDisabled,
               ]}
               onPress={() => handleQuickTopUp(5)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isOnline}
               activeOpacity={0.7}
             >
               <Text
                 style={[
                   styles.quickFillText,
                   autoStopCountdown === 300 && styles.quickFillTextActive,
+                  !isOnline && styles.quickFillTextDisabled,
                 ]}
               >
                 ⏱️ 5 Min
@@ -223,9 +232,10 @@ export default function MotorControl({
               style={[
                 styles.quickFillPill,
                 autoStopCountdown === 600 && styles.quickFillPillActive,
+                !isOnline && styles.quickFillPillDisabled,
               ]}
               onPress={() => handleQuickTopUp(10)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isOnline}
               activeOpacity={0.7}
             >
               <Text
@@ -632,5 +642,13 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "600",
+  },
+  quickFillPillDisabled: {
+    backgroundColor: "#F1F5F9",
+    borderColor: "#CBD5E1",
+    opacity: 0.5,
+  },
+  quickFillTextDisabled: {
+    color: "#94A3B8",
   },
 });

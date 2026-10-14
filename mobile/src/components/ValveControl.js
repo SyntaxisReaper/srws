@@ -7,6 +7,7 @@ export default function ValveControl({
   probeTop = false,
   isSubmitting = false,
   manualOverride = false,
+  isOnline = true,
   onToggleManualOverride = () => {},
   onToggleValve = () => {},
 }) {
@@ -15,7 +16,7 @@ export default function ValveControl({
   const isBlocked = !manualOverride && isFull;
 
   const handlePress = () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !isOnline) return;
     const nextCommand = isOpen ? "CLOSED" : "OPEN";
     onToggleValve(nextCommand, manualOverride);
   };
@@ -27,7 +28,9 @@ export default function ValveControl({
         <View style={styles.headerTextGroup}>
           <Text style={styles.cardTitle}>Water Supply Valve</Text>
           <Text style={styles.cardSubtitle}>
-            {isOpen
+            {!isOnline
+              ? "⚠️ Device Offline • Valve controls disabled"
+              : isOpen
               ? "Inlet valve is OPEN • Municipal water flowing in"
               : manualOverride
               ? "⚡ Manual Override Active • You can open or close anytime"
@@ -38,7 +41,7 @@ export default function ValveControl({
         <View style={[styles.statusBadge, isOpen ? styles.badgeOpen : styles.badgeClosed]}>
           <View style={[styles.statusDot, isOpen ? styles.dotOpen : styles.dotClosed]} />
           <Text style={[styles.statusText, isOpen ? styles.textOpen : styles.textClosed]}>
-            {isOpen ? "INLET OPEN" : "SHUT"}
+            {!isOnline ? "OFFLINE" : isOpen ? "INLET OPEN" : "SHUT"}
           </Text>
         </View>
       </View>
@@ -107,10 +110,10 @@ export default function ValveControl({
         <TouchableOpacity
           style={[
             styles.mainButton,
-            isBlocked && !isOpen && styles.btnDisabled,
+            (!isOnline || (isBlocked && !isOpen)) && styles.btnDisabled,
           ]}
           onPress={handlePress}
-          disabled={isSubmitting || (isBlocked && !isOpen)}
+          disabled={isSubmitting || !isOnline || (isBlocked && !isOpen)}
           activeOpacity={0.85}
         >
           {isSubmitting ? (
@@ -120,7 +123,9 @@ export default function ValveControl({
               <View style={styles.btnTitleRow}>
                 <Text style={styles.btnIconText}>{isOpen ? "🛑" : "💧"}</Text>
                 <Text style={styles.btnMainText}>
-                  {isOpen
+                  {!isOnline
+                    ? "DEVICE OFFLINE"
+                    : isOpen
                     ? manualOverride
                       ? "CLOSE WATER VALVE (OVERRIDE)"
                       : "CLOSE WATER VALVE"
@@ -130,7 +135,9 @@ export default function ValveControl({
                 </Text>
               </View>
               <Text style={styles.btnSubText}>
-                {isOpen
+                {!isOnline
+                  ? "⚠️ Device disconnected • Reconnect ESP32 to operate valve"
+                  : isOpen
                   ? "Tap to shut off incoming municipal water"
                   : manualOverride
                   ? "Manual override active • Tap to open supply valve"
