@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native builds
+*.orig.*
+[Aa]ndroid/
+[Ii]os/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment and Secrets
+.env
+.env.local
+.env.production
+.env*.local
+*.local.js
+google-services.json
+**/google-services.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Documentation, notes, and system design files (ONLY README.md is pushed to GitHub)
+*.md
+**/*.md
+*.txt
+*.pdf
+**/*.txt
+!/README.md
