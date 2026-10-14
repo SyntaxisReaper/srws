@@ -47,7 +47,18 @@ export default function App() {
   const status = deviceData?.status || {};
   const commands = deviceData?.commands || {};
   const config = deviceData?.config || {};
-  const history = deviceData?.history || [];
+  const rawHistory = deviceData?.history;
+  const history = Array.isArray(rawHistory)
+    ? rawHistory
+    : rawHistory && typeof rawHistory === "object"
+    ? Object.keys(rawHistory)
+        .map((key) => ({
+          id: key,
+          ...rawHistory[key],
+          ts: rawHistory[key]?.ts || Number(key) || Date.now(),
+        }))
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+    : [];
 
   return (
     <SafeAreaView style={styles.safeContainer}>

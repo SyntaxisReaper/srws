@@ -24,6 +24,7 @@ yarn-error.log*
 .env.production
 .env*.local
 *.local.js
+database_seed.json
 google-services.json
 **/google-services.json
 

@@ -37,7 +37,7 @@ export default function MotorControl({
           <View style={styles.meterBox}>
             <Text style={styles.meterLabel}>Load Current</Text>
             <Text style={[styles.meterValue, motorRunning && styles.meterActive]}>
-              {Number(currentAmps).toFixed(2)} <Text style={styles.meterUnit}>A</Text>
+              {Number(currentAmps || 0).toFixed(2)} <Text style={styles.meterUnit}>A</Text>
             </Text>
           </View>
           <View style={[styles.meterBox, { marginLeft: 8 }]}>

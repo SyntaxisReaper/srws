@@ -88,13 +88,44 @@ export const subscribeToDeviceState = (deviceId, callback, useSimulation = false
   const url = `${firebaseConfig.databaseURL}/devices/${deviceId || DEFAULT_DEVICE_ID}.json`;
   let isActive = true;
 
+  const normalizeHistory = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "object") {
+      return Object.keys(raw)
+        .map((k) => ({
+          id: raw[k]?.id || k,
+          ...raw[k],
+          ts: raw[k]?.ts || Number(k) || Date.now(),
+        }))
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    }
+    return [];
+  };
+
   const fetchLiveState = async () => {
     try {
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         if (data && isActive) {
-          callback(data);
+          const normalized = {
+            ...data,
+            history: normalizeHistory(data.history),
+            status: {
+              ...data.status,
+              waterLevel: data.status?.waterLevel ?? 0,
+              valveState: data.status?.valveState || (data.status?.valveOpen ? "OPEN" : "CLOSED"),
+              levelState:
+                data.status?.levelState ||
+                (data.status?.waterLevel >= 90
+                  ? "TANK FULL"
+                  : data.status?.waterLevel <= 20
+                  ? "LOW WATER"
+                  : "MEDIUM"),
+            },
+          };
+          callback(normalized);
         }
       }
     } catch (err) {

@@ -25,6 +25,18 @@ export default function AlertHistory({ history = [] }) {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   };
 
+  const safeHistory = Array.isArray(history)
+    ? history
+    : history && typeof history === "object"
+    ? Object.keys(history)
+        .map((key) => ({
+          id: key,
+          ...history[key],
+          ts: history[key]?.ts || Number(key) || Date.now(),
+        }))
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+    : [];
+
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
@@ -32,17 +44,17 @@ export default function AlertHistory({ history = [] }) {
           <Text style={styles.cardTitle}>SYSTEM AUDIT TRAIL</Text>
           <Text style={styles.cardSubtitle}>Event & Alert History</Text>
         </View>
-        <Text style={styles.countBadge}>{history.length} Events</Text>
+        <Text style={styles.countBadge}>{safeHistory.length} Events</Text>
       </View>
 
-      {history.length === 0 ? (
+      {safeHistory.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📋</Text>
           <Text style={styles.emptyText}>No alerts or events recorded yet</Text>
         </View>
       ) : (
         <View style={styles.listContainer}>
-          {history.slice(0, 5).map((item, index) => {
+          {safeHistory.slice(0, 5).map((item, index) => {
             const badge = getEventBadge(item.event);
             return (
               <View key={item.id || index} style={styles.eventRow}>
