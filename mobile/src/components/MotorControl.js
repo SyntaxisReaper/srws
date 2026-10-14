@@ -17,22 +17,35 @@ export default function MotorControl({
 }) {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [autoStopCountdown, setAutoStopCountdown] = useState(null); // in seconds
 
   const isFull = probeTop || waterLevel >= fullThreshold;
   const isBlocked = isFull || motorFault;
 
-  // Track run duration when active
+  // Track run duration & auto-stop timer when active
   useEffect(() => {
     let timer;
     if (motorRunning) {
       timer = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
+
+        setAutoStopCountdown((prevCountdown) => {
+          if (prevCountdown !== null) {
+            if (prevCountdown <= 1) {
+              onToggle("OFF");
+              return null;
+            }
+            return prevCountdown - 1;
+          }
+          return null;
+        });
       }, 1000);
     } else {
       setElapsedSeconds(0);
+      setAutoStopCountdown(null);
     }
     return () => clearInterval(timer);
-  }, [motorRunning]);
+  }, [motorRunning, onToggle]);
 
   const formatTimer = (totalSec) => {
     const m = Math.floor(totalSec / 60);
@@ -43,8 +56,19 @@ export default function MotorControl({
   const handlePress = () => {
     if (isSubmitting) return;
     const nextCommand = motorRunning ? "OFF" : "ON";
+    setAutoStopCountdown(null);
     onToggle(nextCommand);
   };
+
+  const handleQuickTopUp = (minutes) => {
+    if (isSubmitting || isBlocked) return;
+    setAutoStopCountdown(minutes * 60);
+    if (!motorRunning) {
+      onToggle("ON");
+    }
+  };
+
+  const watts = (Number(currentAmps || 0.85) * Number(busVoltage || 12.0)).toFixed(1);
 
   return (
     <View style={styles.card}>
@@ -54,7 +78,9 @@ export default function MotorControl({
           <Text style={styles.cardTitle}>Water Pump</Text>
           <Text style={styles.cardSubtitle}>
             {motorRunning
-              ? `Active & Pumping (${formatTimer(elapsedSeconds)})`
+              ? autoStopCountdown !== null
+                ? `Auto-Stop in ${formatTimer(autoStopCountdown)} • Total: ${formatTimer(elapsedSeconds)}`
+                : `Active & Pumping (${formatTimer(elapsedSeconds)})`
               : "Pump is idle • Automatic safety guards active"}
           </Text>
         </View>
@@ -123,7 +149,9 @@ export default function MotorControl({
               </View>
               <Text style={styles.btnSubText}>
                 {motorRunning
-                  ? `Pump running • Tap to safely stop immediately`
+                  ? autoStopCountdown !== null
+                    ? `Auto-stopping in ${formatTimer(autoStopCountdown)} • Tap to stop now`
+                    : "Pump running • Tap to safely stop immediately"
                   : isBlocked
                   ? "Turn on locked while tank is full"
                   : "Tap to begin pumping water into tank"}
@@ -133,25 +161,61 @@ export default function MotorControl({
         </TouchableOpacity>
       </View>
 
-      {/* Quick Refill Duration Presets */}
+      {/* Quick Refill Duration Presets with Live Auto-Countdown */}
       {!isBlocked && (
-        <View style={styles.quickFillRow}>
-          <TouchableOpacity
-            style={styles.quickFillPill}
-            onPress={() => onToggle("ON")}
-            disabled={isSubmitting || motorRunning}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.quickFillText}>⏱️ Quick Top-Up (5m)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickFillPill}
-            onPress={() => onToggle("ON")}
-            disabled={isSubmitting || motorRunning}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.quickFillText}>💧 Fill to Full (90%)</Text>
-          </TouchableOpacity>
+        <View style={styles.quickFillContainer}>
+          <Text style={styles.quickFillHeader}>Quick Fill Timers (Auto-Stop):</Text>
+          <View style={styles.quickFillRow}>
+            <TouchableOpacity
+              style={[
+                styles.quickFillPill,
+                autoStopCountdown === 300 && styles.quickFillPillActive,
+              ]}
+              onPress={() => handleQuickTopUp(5)}
+              disabled={isSubmitting}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.quickFillText,
+                  autoStopCountdown === 300 && styles.quickFillTextActive,
+                ]}
+              >
+                ⏱️ 5 Min
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.quickFillPill,
+                autoStopCountdown === 600 && styles.quickFillPillActive,
+              ]}
+              onPress={() => handleQuickTopUp(10)}
+              disabled={isSubmitting}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.quickFillText,
+                  autoStopCountdown === 600 && styles.quickFillTextActive,
+                ]}
+              >
+                ⏱️ 10 Min
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickFillPill}
+              onPress={() => {
+                setAutoStopCountdown(null);
+                if (!motorRunning) onToggle("ON");
+              }}
+              disabled={isSubmitting || motorRunning}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.quickFillText}>💧 Fill to Full (90%)</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -165,15 +229,15 @@ export default function MotorControl({
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Power Load</Text>
+          <Text style={styles.metricLabel}>Power Draw</Text>
           <Text style={styles.metricValue}>
-            {motorRunning ? `${Number(currentAmps || 0.85).toFixed(2)} A` : "0.00 A"}
+            {motorRunning ? `${watts} W (${Number(currentAmps || 0.85).toFixed(2)}A)` : "0.0 W"}
           </Text>
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Auto-Cutoff</Text>
-          <Text style={styles.metricValue}>At 90%</Text>
+          <Text style={styles.metricLabel}>Safety Guard</Text>
+          <Text style={styles.metricValue}>90% Cutoff</Text>
         </View>
       </View>
 
@@ -386,24 +450,43 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginTop: 5,
   },
+  quickFillContainer: {
+    marginTop: 12,
+  },
+  quickFillHeader: {
+    color: "#64748B",
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   quickFillRow: {
     flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 10,
-    gap: 8,
+    justifyContent: "space-between",
+    gap: 6,
   },
   quickFillPill: {
+    flex: 1,
     backgroundColor: "#F8FAFC",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    alignItems: "center",
+  },
+  quickFillPillActive: {
+    backgroundColor: "#000000",
+    borderColor: "#000000",
   },
   quickFillText: {
     color: "#0F172A",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
+  },
+  quickFillTextActive: {
+    color: "#FFFFFF",
   },
   metricsRow: {
     flexDirection: "row",
@@ -429,7 +512,7 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     color: "#0F172A",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
   },
   metricDivider: {

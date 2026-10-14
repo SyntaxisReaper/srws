@@ -155,6 +155,25 @@ export default function WaterLevelGauge({
         </View>
       </View>
 
+      {/* Water Health & Supply Forecast Strip */}
+      <View style={styles.qualityStrip}>
+        <View style={styles.qualityItem}>
+          <Text style={styles.qualityLabel}>ESTIMATED STATUS</Text>
+          <Text style={styles.qualityValue}>
+            {waterLevel >= 90
+              ? "🛡️ Full • Cutoff Engaged"
+              : waterLevel <= 20
+              ? "⚡ Refill Required"
+              : "✨ Safe & Stable"}
+          </Text>
+        </View>
+        <View style={styles.qualityDivider} />
+        <View style={styles.qualityItem}>
+          <Text style={styles.qualityLabel}>WATER HEALTH</Text>
+          <Text style={styles.qualityValue}>💧 Potable • 24°C</Text>
+        </View>
+      </View>
+
       {/* Demo Level Controls Drawer */}
       {onLevelAdjust && (
         <View style={styles.demoSection}>
@@ -459,6 +478,38 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
+  },
+  qualityStrip: {
+    flexDirection: "row",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+  },
+  qualityItem: {
+    flex: 1,
+  },
+  qualityLabel: {
+    color: "#94A3B8",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  qualityValue: {
+    color: "#0F172A",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  qualityDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "#E2E8F0",
+    marginHorizontal: 10,
   },
   demoToggleHeader: {
     alignItems: "center",

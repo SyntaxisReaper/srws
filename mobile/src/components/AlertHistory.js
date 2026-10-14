@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
 export default function AlertHistory({ history = [] }) {
   const [filter, setFilter] = useState("ALL"); // "ALL" | "WATER" | "PUMP" | "ALERTS"
+  const [showAll, setShowAll] = useState(false);
 
   const getEventBadge = (event) => {
     switch (event) {
@@ -107,7 +108,7 @@ export default function AlertHistory({ history = [] }) {
         </View>
       ) : (
         <View style={styles.listContainer}>
-          {filteredHistory.slice(0, 6).map((item, index) => {
+          {(showAll ? filteredHistory : filteredHistory.slice(0, 5)).map((item, index) => {
             const badge = getEventBadge(item.event);
             return (
               <View key={item.id || index} style={styles.eventRow}>
@@ -133,6 +134,18 @@ export default function AlertHistory({ history = [] }) {
               </View>
             );
           })}
+
+          {filteredHistory.length > 5 && (
+            <TouchableOpacity
+              style={styles.expandBtn}
+              onPress={() => setShowAll(!showAll)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.expandBtnText}>
+                {showAll ? "▲ SHOW LESS" : `▼ VIEW ALL (${filteredHistory.length}) EVENTS`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -280,5 +293,23 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     fontSize: 11,
     fontWeight: "800",
+  },
+  expandBtn: {
+    backgroundColor: "#000000",
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+    marginTop: 12,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  expandBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
 });

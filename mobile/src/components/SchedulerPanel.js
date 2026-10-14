@@ -9,6 +9,27 @@ export default function SchedulerPanel({
 }) {
   const [isAuto, setIsAuto] = useState(autoMode);
   const [selectedPreset, setSelectedPreset] = useState("morning");
+  const [activeDays, setActiveDays] = useState(["M", "T", "W", "Th", "F", "Sa", "Su"]);
+
+  const daysList = [
+    { id: "M", label: "M" },
+    { id: "T", label: "T" },
+    { id: "W", label: "W" },
+    { id: "Th", label: "T" },
+    { id: "F", label: "F" },
+    { id: "Sa", label: "S" },
+    { id: "Su", label: "S" },
+  ];
+
+  const toggleDay = (dayId) => {
+    if (activeDays.includes(dayId)) {
+      if (activeDays.length > 1) {
+        setActiveDays(activeDays.filter((d) => d !== dayId));
+      }
+    } else {
+      setActiveDays([...activeDays, dayId]);
+    }
+  };
 
   const handleToggleAuto = (val) => {
     setIsAuto(val);
@@ -55,20 +76,43 @@ export default function SchedulerPanel({
         </Text>
       </View>
 
-      {/* Next Scheduled Timer Status */}
+      {/* Next Scheduled Timer Status Card */}
       <View style={styles.nextRunCard}>
         <View style={styles.nextRunLeft}>
           <Text style={styles.nextRunLabel}>NEXT SCHEDULED FILL</Text>
           <Text style={styles.nextRunTime}>
             {selectedPreset === "morning"
-              ? "Tomorrow at 06:00 AM"
+              ? "Tomorrow at 06:00 AM (30 min)"
               : selectedPreset === "evening"
-              ? "Today at 06:00 PM"
-              : "Today at 01:30 PM"}
+              ? "Today at 06:00 PM (30 min)"
+              : "Today at 01:30 PM (20 min)"}
           </Text>
         </View>
         <View style={styles.nextRunBadge}>
           <Text style={styles.nextRunBadgeText}>{isAuto ? "Active" : "Paused"}</Text>
+        </View>
+      </View>
+
+      {/* Visual 24-Hour Timeline Bar */}
+      <View style={styles.timelineSection}>
+        <View style={styles.timelineHeaderRow}>
+          <Text style={styles.timelineLabel}>24-HOUR FILL TIMELINE</Text>
+          <Text style={styles.timelineSub}>Scheduled windows highlighted</Text>
+        </View>
+        <View style={styles.timelineTrack}>
+          {/* Morning Window (06:00) */}
+          <View style={[styles.timelineBlock, { left: "25%", width: "8%" }]} />
+          {/* Midday Window (13:30) */}
+          <View style={[styles.timelineBlock, { left: "56%", width: "6%" }]} />
+          {/* Evening Window (18:00) */}
+          <View style={[styles.timelineBlock, { left: "75%", width: "8%" }]} />
+        </View>
+        <View style={styles.timelineHourLabels}>
+          <Text style={styles.hourText}>00:00</Text>
+          <Text style={styles.hourText}>06:00</Text>
+          <Text style={styles.hourText}>12:00</Text>
+          <Text style={styles.hourText}>18:00</Text>
+          <Text style={styles.hourText}>24:00</Text>
         </View>
       </View>
 
@@ -123,6 +167,42 @@ export default function SchedulerPanel({
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Weekly Repeat Days Selector */}
+      <View style={styles.daysSection}>
+        <Text style={styles.daysHeader}>Repeat Days:</Text>
+        <View style={styles.daysRow}>
+          {daysList.map((day, idx) => {
+            const isSelected = activeDays.includes(day.id);
+            return (
+              <TouchableOpacity
+                key={`${day.id}-${idx}`}
+                style={[styles.dayCircle, isSelected && styles.dayCircleActive]}
+                onPress={() => toggleDay(day.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dayText, isSelected && styles.dayTextActive]}>
+                  {day.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Save Settings Button - Solid Black with White text */}
+      <TouchableOpacity
+        style={styles.saveBtn}
+        onPress={() => {
+          let times = { scheduledOn: "06:00", scheduledOff: "06:30" };
+          if (selectedPreset === "afternoon") times = { scheduledOn: "13:30", scheduledOff: "13:50" };
+          if (selectedPreset === "evening") times = { scheduledOn: "18:00", scheduledOff: "18:30" };
+          onSaveSchedule({ autoMode: isAuto, ...times, repeatDays: activeDays });
+        }}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.saveBtnText}>✓ SAVE SCHEDULE & REFILL RULES</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -200,7 +280,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    marginBottom: 18,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: "#BAE6FD",
   },
@@ -230,6 +310,55 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
   },
+  timelineSection: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  timelineHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  timelineLabel: {
+    color: "#64748B",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  timelineSub: {
+    color: "#94A3B8",
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  timelineTrack: {
+    height: 12,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 6,
+    position: "relative",
+    overflow: "hidden",
+  },
+  timelineBlock: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    backgroundColor: "#000000",
+    borderRadius: 3,
+  },
+  timelineHourLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  hourText: {
+    color: "#94A3B8",
+    fontSize: 9,
+    fontWeight: "600",
+  },
   sectionHeader: {
     color: "#0F172A",
     fontSize: 14,
@@ -239,6 +368,7 @@ const styles = StyleSheet.create({
   presetsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 16,
   },
   presetCard: {
     flex: 1,
@@ -285,5 +415,61 @@ const styles = StyleSheet.create({
   },
   presetDurationActive: {
     color: "#94A3B8",
+  },
+  daysSection: {
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingTop: 14,
+  },
+  daysHeader: {
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  daysRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  dayCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  dayCircleActive: {
+    backgroundColor: "#000000",
+    borderColor: "#000000",
+  },
+  dayText: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  dayTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
+  saveBtn: {
+    backgroundColor: "#000000",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 20,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  saveBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.8,
   },
 });

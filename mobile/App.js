@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Modal,
   Switch,
+  Platform,
 } from "react-native";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { useDeviceStatus } from "./src/hooks/useDeviceStatus";
@@ -21,6 +22,7 @@ import AlertHistory from "./src/components/AlertHistory";
 import SchedulerPanel from "./src/components/SchedulerPanel";
 import AlertBanner from "./src/components/AlertBanner";
 import AlertSettingsModal from "./src/components/AlertSettingsModal";
+import WaterUsageChart from "./src/components/WaterUsageChart";
 import { DEFAULT_DEVICE_ID } from "./src/services/firebaseConfig";
 import {
   registerForPushNotificationsAsync,
@@ -32,6 +34,8 @@ export default function App() {
   const [useSimulation, setUseSimulation] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const toastTimeoutRef = useRef(null);
   const prevStatusRef = useRef({ waterLevel: 50, motorFault: false });
 
   // Notification Preferences
@@ -53,6 +57,29 @@ export default function App() {
     changeWaterLevel,
     saveSchedule,
   } = useDeviceStatus(DEFAULT_DEVICE_ID, useSimulation);
+
+  const showToast = (msg) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(msg);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2600);
+  };
+
+  const handleToggleMotor = (nextCmd) => {
+    toggleMotor(nextCmd);
+    showToast(nextCmd === "ON" ? "⚡ Water pump started" : "⏹️ Water pump stopped");
+  };
+
+  const handleToggleValve = (nextCmd) => {
+    toggleValve(nextCmd);
+    showToast(nextCmd === "OPEN" ? "🚰 Supply valve opened" : "🔒 Supply valve shut");
+  };
+
+  const handleSaveSchedule = (scheduleData) => {
+    saveSchedule(scheduleData);
+    showToast("✓ Schedule updated successfully");
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -118,6 +145,7 @@ export default function App() {
 
   const handleTestAlert = async () => {
     setTestSent(true);
+    showToast("🔔 Test notification triggered");
     await triggerNativeAlert(
       "💧 HydroNode Alert Test",
       "Notification system working! Overflow protection & pump guards are active.",
@@ -131,7 +159,7 @@ export default function App() {
       case "automation":
         return "Auto-Refill & Daily Schedules";
       case "activity":
-        return "Notifications & Event Log";
+        return "Water Usage & Notifications";
       default:
         return "Tank Level & Quick Controls";
     }
@@ -142,6 +170,17 @@ export default function App() {
       <ExpoStatusBar style="dark" />
       <NativeStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
+      {/* Floating Interactive Toast Feedback Banner */}
+      {toastMessage && (
+        <TouchableOpacity
+          style={styles.toastContainer}
+          onPress={() => setToastMessage(null)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Main Top Header - Clean Minimalist White */}
       <View style={styles.topHeader}>
         <View style={styles.titleRow}>
@@ -149,7 +188,10 @@ export default function App() {
             <Text style={styles.logoIcon}>💧</Text>
           </View>
           <View>
-            <Text style={styles.appName}>HydroNode</Text>
+            <View style={styles.appNameRow}>
+              <Text style={styles.appName}>HydroNode</Text>
+              <View style={styles.livePulseDot} />
+            </View>
             <Text style={styles.appSub}>{getSubHeader()}</Text>
           </View>
         </View>
@@ -157,11 +199,15 @@ export default function App() {
         {/* Black Button with White Text */}
         <TouchableOpacity
           style={styles.infoBadge}
-          onPress={() => setUseSimulation(!useSimulation)}
+          onPress={() => {
+            const nextMode = !useSimulation;
+            setUseSimulation(nextMode);
+            showToast(nextMode ? "Demo Mode Active" : "Live Device Active");
+          }}
           activeOpacity={0.8}
         >
           <Text style={styles.infoBadgeText}>
-            {useSimulation ? "DEMO MODE" : "LIVE DEVICE"}
+            {useSimulation ? "● DEMO" : "● LIVE"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -201,7 +247,7 @@ export default function App() {
               probeLow={status.probeLow !== false}
               valveOpen={status.valveOpen || status.valveState === "OPEN"}
               onResetFault={simulateFault}
-              onOpenValve={() => toggleValve("OPEN")}
+              onOpenValve={() => handleToggleValve("OPEN")}
               onOpenSettings={() => setActiveTab("activity")}
             />
 
@@ -229,7 +275,7 @@ export default function App() {
               fullThreshold={config.fullThreshold || 90}
               probeTop={status.probeTop || false}
               isSubmitting={isSubmitting}
-              onToggle={toggleMotor}
+              onToggle={handleToggleMotor}
               onSimulateFault={simulateFault}
             />
 
@@ -239,7 +285,7 @@ export default function App() {
               waterLevel={status.waterLevel ?? 60}
               probeTop={status.probeTop || false}
               isSubmitting={isSubmitting}
-              onToggleValve={toggleValve}
+              onToggleValve={handleToggleValve}
             />
           </View>
         )}
@@ -252,7 +298,7 @@ export default function App() {
               scheduledOn={commands.scheduledOn || "06:00"}
               scheduledOff={commands.scheduledOff || "06:30"}
               autoMode={commands.autoMode !== false}
-              onSaveSchedule={saveSchedule}
+              onSaveSchedule={handleSaveSchedule}
             />
 
             {/* Smart Refill Guide Card */}
@@ -280,9 +326,12 @@ export default function App() {
           </View>
         )}
 
-        {/* TAB 3: ACTIVITY & ALERTS */}
+        {/* TAB 3: ACTIVITY & ANALYTICS */}
         {activeTab === "activity" && (
           <View style={styles.tabContent}>
+            {/* 7-Day Household Consumption & Usage Analytics */}
+            <WaterUsageChart />
+
             {/* Notification Preferences Card */}
             <View style={styles.settingsCard}>
               <Text style={styles.settingsCardTitle}>Notification Preferences</Text>
@@ -396,7 +445,7 @@ export default function App() {
           onPress={() => setActiveTab("activity")}
           activeOpacity={0.8}
         >
-          <Text style={styles.navIcon}>📋</Text>
+          <Text style={styles.navIcon}>📊</Text>
           <Text style={[styles.navText, activeTab === "activity" && styles.navTextActive]}>
             Activity
           </Text>
@@ -471,6 +520,38 @@ const styles = StyleSheet.create({
   },
   logoIcon: {
     fontSize: 22,
+  },
+  toastContainer: {
+    position: "absolute",
+    top: Platform.OS === "android" ? (NativeStatusBar.currentHeight || 28) + 70 : 80,
+    alignSelf: "center",
+    backgroundColor: "#000000",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 22,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 99999,
+  },
+  toastText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  appNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  livePulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#16A34A",
+    marginLeft: 6,
   },
   appName: {
     color: "#0F172A",
