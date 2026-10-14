@@ -21,8 +21,6 @@ export default function SchedulerPanel({
       onSaveSchedule({ scheduledOn: "06:00", scheduledOff: "06:30" });
     } else if (preset === "evening") {
       onSaveSchedule({ scheduledOn: "18:00", scheduledOff: "18:30" });
-    } else if (preset === "custom") {
-      onSaveSchedule({ scheduledOn: "07:00", scheduledOff: "07:20" });
     }
   };
 
@@ -30,17 +28,17 @@ export default function SchedulerPanel({
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.cardTitle}>AUTOMATION & SCHEDULER</Text>
-          <Text style={styles.cardSubtitle}>Timed & Intelligent Refill</Text>
+          <Text style={styles.cardTitle}>Automatic Refill</Text>
+          <Text style={styles.cardSubtitle}>Smart level management & schedules</Text>
         </View>
 
         <View style={styles.switchContainer}>
-          <Text style={styles.switchLabel}>{isAuto ? "AUTO" : "MANUAL"}</Text>
+          <Text style={styles.switchLabel}>{isAuto ? "ENABLED" : "OFF"}</Text>
           <Switch
             value={isAuto}
             onValueChange={handleToggleAuto}
-            trackColor={{ false: "#374151", true: "#059669" }}
-            thumbColor={isAuto ? "#10B981" : "#9CA3AF"}
+            trackColor={{ false: "#E2E8F0", true: "#000000" }}
+            thumbColor={isAuto ? "#FFFFFF" : "#94A3B8"}
           />
         </View>
       </View>
@@ -50,46 +48,45 @@ export default function SchedulerPanel({
         <Text style={styles.infoIcon}>💡</Text>
         <Text style={styles.infoText}>
           {isAuto
-            ? "Auto Mode: Automatically activates motor when water ≤ 20% and terminates when tank reaches 90%."
-            : "Manual Mode: Motor operates strictly on scheduled timers or manual user toggle."}
+            ? "Auto Mode: Automatically fills your tank whenever water is low and safely stops when full."
+            : "Manual Mode: Operates strictly when you tap the Start button or during scheduled daily times."}
         </Text>
       </View>
 
       {/* Scheduled Time Slots */}
-      <Text style={styles.sectionHeader}>Daily Refill Schedules</Text>
+      <Text style={styles.sectionHeader}>Daily Refill Times</Text>
       <View style={styles.presetsRow}>
         <TouchableOpacity
           style={[styles.presetCard, selectedPreset === "morning" && styles.presetCardActive]}
           onPress={() => handleApplyPreset("morning")}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <Text style={styles.presetTime}>06:00 - 06:30</Text>
-          <Text style={styles.presetTitle}>Morning Slot</Text>
-          <Text style={styles.presetDuration}>30 mins</Text>
+          <Text style={[styles.presetTime, selectedPreset === "morning" && styles.presetTimeActive]}>
+            06:00 - 06:30
+          </Text>
+          <Text style={[styles.presetTitle, selectedPreset === "morning" && styles.presetTitleActive]}>
+            🌅 Morning Fill
+          </Text>
+          <Text style={[styles.presetDuration, selectedPreset === "morning" && styles.presetDurationActive]}>
+            30 mins duration
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.presetCard, selectedPreset === "evening" && styles.presetCardActive]}
           onPress={() => handleApplyPreset("evening")}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <Text style={styles.presetTime}>18:00 - 18:30</Text>
-          <Text style={styles.presetTitle}>Evening Slot</Text>
-          <Text style={styles.presetDuration}>30 mins</Text>
+          <Text style={[styles.presetTime, selectedPreset === "evening" && styles.presetTimeActive]}>
+            18:00 - 18:30
+          </Text>
+          <Text style={[styles.presetTitle, selectedPreset === "evening" && styles.presetTitleActive]}>
+            🌇 Evening Fill
+          </Text>
+          <Text style={[styles.presetDuration, selectedPreset === "evening" && styles.presetDurationActive]}>
+            30 mins duration
+          </Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Current Active Timer Summary */}
-      <View style={styles.timerSummary}>
-        <View style={styles.timerCol}>
-          <Text style={styles.timerSub}>Scheduled Start</Text>
-          <Text style={styles.timerVal}>{scheduledOn || "06:00"}</Text>
-        </View>
-        <View style={styles.timerDivider} />
-        <View style={styles.timerCol}>
-          <Text style={styles.timerSub}>Scheduled Stop</Text>
-          <Text style={styles.timerVal}>{scheduledOff || "06:30"}</Text>
-        </View>
       </View>
     </View>
   );
@@ -97,18 +94,18 @@ export default function SchedulerPanel({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#111827",
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 20,
     marginHorizontal: 16,
-    marginVertical: 10,
+    marginVertical: 8,
     borderWidth: 1,
-    borderColor: "#1F2937",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   headerRow: {
     flexDirection: "row",
@@ -117,15 +114,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cardTitle: {
-    color: "#9CA3AF",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
+    color: "#0F172A",
+    fontSize: 16,
+    fontWeight: "800",
   },
   cardSubtitle: {
-    color: "#F9FAFB",
-    fontSize: 17,
-    fontWeight: "700",
+    color: "#64748B",
+    fontSize: 13,
     marginTop: 2,
   },
   switchContainer: {
@@ -133,93 +128,81 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   switchLabel: {
-    color: "#9CA3AF",
-    fontSize: 11,
+    color: "#0F172A",
+    fontSize: 12,
     fontWeight: "700",
-    marginRight: 6,
+    marginRight: 8,
   },
   infoBox: {
     flexDirection: "row",
-    backgroundColor: "#1F2937",
-    padding: 12,
+    backgroundColor: "#F8FAFC",
     borderRadius: 12,
-    alignItems: "center",
+    padding: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   infoIcon: {
     fontSize: 16,
-    marginRight: 10,
+    marginRight: 8,
   },
   infoText: {
-    color: "#D1D5DB",
-    fontSize: 11,
-    lineHeight: 16,
     flex: 1,
+    color: "#475569",
+    fontSize: 12,
+    lineHeight: 17,
   },
   sectionHeader: {
-    color: "#9CA3AF",
-    fontSize: 12,
-    fontWeight: "600",
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "700",
     marginBottom: 10,
   },
   presetsRow: {
     flexDirection: "row",
-    gap: 12,
+    justifyContent: "space-between",
   },
   presetCard: {
     flex: 1,
-    backgroundColor: "#1F2937",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "transparent",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   presetCardActive: {
-    borderColor: "#00D2FF",
-    backgroundColor: "rgba(0, 210, 255, 0.08)",
+    backgroundColor: "#000000",
+    borderColor: "#000000",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
   presetTime: {
-    color: "#00D2FF",
-    fontSize: 13,
+    color: "#0F172A",
+    fontSize: 14,
     fontWeight: "800",
+    marginBottom: 4,
+  },
+  presetTimeActive: {
+    color: "#FFFFFF",
   },
   presetTitle: {
-    color: "#F9FAFB",
+    color: "#475569",
     fontSize: 12,
     fontWeight: "600",
-    marginTop: 4,
+    marginBottom: 2,
+  },
+  presetTitleActive: {
+    color: "#E2E8F0",
   },
   presetDuration: {
-    color: "#9CA3AF",
-    fontSize: 10,
-    marginTop: 2,
+    color: "#94A3B8",
+    fontSize: 11,
   },
-  timerSummary: {
-    flexDirection: "row",
-    backgroundColor: "#1F2937",
-    borderRadius: 12,
-    marginTop: 14,
-    padding: 12,
-    alignItems: "center",
-  },
-  timerCol: {
-    flex: 1,
-    alignItems: "center",
-  },
-  timerDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: "#374151",
-  },
-  timerSub: {
-    color: "#9CA3AF",
-    fontSize: 10,
-    fontWeight: "500",
-  },
-  timerVal: {
-    color: "#F3F4F6",
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 2,
+  presetDurationActive: {
+    color: "#94A3B8",
   },
 });

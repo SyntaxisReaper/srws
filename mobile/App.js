@@ -98,8 +98,8 @@ export default function App() {
     // 3. Dry-run motor fault
     if (currentFault && !prev.motorFault) {
       triggerNativeAlert(
-        "🚨 Motor Dry-Run Fault",
-        "INA226 detected current < 0.2A! Power cut to protect pump.",
+        "🚨 Motor Safety Shutoff",
+        "Dry-run detected (no water flow). Power cut to protect the pump.",
         "critical"
       );
     }
@@ -109,10 +109,10 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <ExpoStatusBar style="light" />
-      <NativeStatusBar barStyle="light-content" backgroundColor="#0B132B" />
+      <ExpoStatusBar style="dark" />
+      <NativeStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Main Top Header */}
+      {/* Main Top Header - Clean Minimalist White */}
       <View style={styles.topHeader}>
         <View style={styles.titleRow}>
           <View style={styles.logoBadge}>
@@ -120,17 +120,18 @@ export default function App() {
           </View>
           <View>
             <Text style={styles.appName}>HydroNode</Text>
-            <Text style={styles.appSub}>Smart Water & Motor Control</Text>
+            <Text style={styles.appSub}>Smart Water & Motor Management</Text>
           </View>
         </View>
 
+        {/* Black Button with White Text */}
         <TouchableOpacity
           style={styles.infoBadge}
           onPress={() => setUseSimulation(!useSimulation)}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
           <Text style={styles.infoBadgeText}>
-            {useSimulation ? "DEMO MODE" : "HARDWARE"}
+            {useSimulation ? "DEMO MODE" : "LIVE DEVICE"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -143,17 +144,17 @@ export default function App() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#00D2FF"
-            colors={["#00D2FF"]}
+            tintColor="#000000"
+            colors={["#000000"]}
           />
         }
       >
-        {/* Device Status & Network Health with Failover info */}
+        {/* Device Status & Network Health */}
         <StatusBarComponent
           deviceId={DEFAULT_DEVICE_ID}
           lastSeen={status.lastSeen}
           wifiStrength={status.wifiStrength || -65}
-          networkUplink={status.networkUplink || "Wi-Fi (Primary) • Hotspot Ready"}
+          networkUplink={status.networkUplink || "Wi-Fi Connected"}
           isSimulation={useSimulation}
           onToggleSimulation={() => setUseSimulation(!useSimulation)}
         />
@@ -170,7 +171,7 @@ export default function App() {
           onOpenSettings={() => setShowAlertSettings(true)}
         />
 
-        {/* Live Water Level Gauge (3 Contact Probes) */}
+        {/* Live Water Level Gauge */}
         <WaterLevelGauge
           waterLevel={status.waterLevel ?? 60}
           levelState={status.levelState || "MEDIUM"}
@@ -182,7 +183,7 @@ export default function App() {
           onLevelAdjust={useSimulation ? changeWaterLevel : null}
         />
 
-        {/* Motor Remote Control & Overfill / Dry-Run Guards */}
+        {/* Motor Remote Control */}
         <MotorControl
           motorRunning={status.motorRunning || false}
           motorFault={status.motorFault || false}
@@ -198,7 +199,7 @@ export default function App() {
           onSimulateFault={simulateFault}
         />
 
-        {/* Remote Water-Supply Valve Control (GPIO 27 / Solenoid Actuator) */}
+        {/* Remote Water-Supply Valve Control */}
         <ValveControl
           valveState={status.valveState || "CLOSED"}
           waterLevel={status.waterLevel ?? 60}
@@ -215,17 +216,17 @@ export default function App() {
           onSaveSchedule={saveSchedule}
         />
 
-        {/* Chronological Alert & Audit History */}
+        {/* Chronological Activity History */}
         <AlertHistory history={history} />
 
         <View style={styles.footerNote}>
           <Text style={styles.footerText}>
-            ESP32 • Contact Probes • INA226 • LR7843 MOSFET • Android APK Ready
+            HydroNode • Smart Water Management • Safety Protected
           </Text>
         </View>
       </ScrollView>
 
-      {/* Action Error Modal */}
+      {/* Action Error Modal - Clean White with Black Button */}
       <Modal
         visible={!!actionError}
         transparent
@@ -235,7 +236,7 @@ export default function App() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalContent}>
             <Text style={styles.modalIcon}>⚠️</Text>
-            <Text style={styles.modalTitle}>Command Notice</Text>
+            <Text style={styles.modalTitle}>Notice</Text>
             <Text style={styles.modalMessage}>{actionError}</Text>
             <TouchableOpacity
               style={styles.modalBtn}
@@ -260,17 +261,17 @@ export default function App() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#0B132B",
+    backgroundColor: "#FFFFFF",
   },
   topHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#1F2937",
-    backgroundColor: "#0B132B",
+    borderBottomColor: "#F1F5F9",
+    backgroundColor: "#FFFFFF",
   },
   titleRow: {
     flexDirection: "row",
@@ -280,43 +281,47 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "rgba(0, 210, 255, 0.15)",
+    backgroundColor: "#F0F9FF",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
     borderWidth: 1,
-    borderColor: "#00D2FF",
+    borderColor: "#BAE6FD",
   },
   logoIcon: {
     fontSize: 20,
   },
   appName: {
-    color: "#FFFFFF",
-    fontSize: 19,
+    color: "#0F172A",
+    fontSize: 18,
     fontWeight: "900",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   appSub: {
-    color: "#9CA3AF",
+    color: "#64748B",
     fontSize: 11,
     fontWeight: "500",
   },
   infoBadge: {
-    backgroundColor: "#1F2937",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#374151",
+    backgroundColor: "#000000",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   infoBadgeText: {
-    color: "#00D2FF",
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "800",
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: "#F8FAFC",
   },
   scrollContent: {
     paddingBottom: 40,
@@ -327,55 +332,65 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   footerText: {
-    color: "#4B5563",
+    color: "#94A3B8",
     fontSize: 11,
     fontWeight: "500",
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#1F2937",
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 340,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#EF4444",
+    borderColor: "#E5E7EB",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
   modalIcon: {
     fontSize: 32,
     marginBottom: 8,
   },
   modalTitle: {
-    color: "#F9FAFB",
+    color: "#0F172A",
     fontSize: 17,
     fontWeight: "800",
     marginBottom: 6,
   },
   modalMessage: {
-    color: "#D1D5DB",
+    color: "#475569",
     fontSize: 13,
     textAlign: "center",
     lineHeight: 18,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   modalBtn: {
-    backgroundColor: "#EF4444",
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: "#000000",
+    paddingVertical: 12,
+    borderRadius: 12,
     width: "100%",
     alignItems: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modalBtnText: {
     color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 });

@@ -19,16 +19,19 @@ export default function ValveControl({
 
   return (
     <View style={styles.card}>
+      {/* Header */}
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.cardTitle}>REMOTE SUPPLY VALVE</Text>
-          <Text style={styles.cardSubtitle}>Inlet Solenoid Actuator</Text>
+          <Text style={styles.cardTitle}>Water Supply Valve</Text>
+          <Text style={styles.cardSubtitle}>
+            {isOpen ? "Inlet valve is open • Water is flowing in" : "Inlet valve is closed"}
+          </Text>
         </View>
 
-        <View style={[styles.portBadge, isOpen ? styles.portActive : styles.portStandby]}>
-          <Text style={styles.portLabel}>GPIO 27 (MOSFET #2)</Text>
-          <Text style={[styles.portState, isOpen && styles.textGreen]}>
-            {isOpen ? "PORT ENERGIZED" : "HARDWARE READY"}
+        <View style={[styles.statusBadge, isOpen ? styles.badgeOpen : styles.badgeClosed]}>
+          <View style={[styles.statusDot, isOpen ? styles.dotOpen : styles.dotClosed]} />
+          <Text style={[styles.statusText, isOpen ? styles.textOpen : styles.textClosed]}>
+            {isOpen ? "OPEN" : "CLOSED"}
           </Text>
         </View>
       </View>
@@ -38,67 +41,64 @@ export default function ValveControl({
         <View style={styles.lockoutBanner}>
           <Text style={styles.lockoutIcon}>🛡️</Text>
           <Text style={styles.lockoutText}>
-            Supply locked: Tank is full. Solenoid valve remains closed to prevent backflow or spill.
+            Supply locked: Tank is full. Valve remains shut to prevent overflow.
           </Text>
         </View>
       )}
 
-      {/* Visual Pipe & Valve Graphic */}
-      <View style={styles.pipeVisualContainer}>
-        <View style={styles.pipeLine}>
-          <Text style={styles.pipeLabel}>Municipal Inlet</Text>
+      {/* Simplified Flow Graphic */}
+      <View style={styles.flowGraphicRow}>
+        <View style={styles.flowEndpoint}>
+          <Text style={styles.flowEndpointIcon}>🚰</Text>
+          <Text style={styles.flowEndpointLabel}>City Main</Text>
         </View>
 
-        {/* Central Valve Body */}
-        <View style={[styles.valveNode, isOpen ? styles.valveNodeOpen : styles.valveNodeClosed]}>
-          <Text style={styles.valveIcon}>{isOpen ? "🌊" : "🔒"}</Text>
-          <Text style={styles.valveStateText}>{isOpen ? "OPEN" : "CLOSED"}</Text>
+        <View style={styles.pipeLineTrack}>
+          <View style={[styles.pipeLineFill, isOpen && styles.pipeLineActive]} />
         </View>
 
-        <View style={[styles.pipeLine, isOpen && styles.pipeFlowing]}>
-          <Text style={styles.pipeLabel}>Tank Inlet</Text>
+        <View style={[styles.valveCenterIcon, isOpen && styles.valveCenterActive]}>
+          <Text style={styles.valveIconText}>{isOpen ? "🌊" : "🔒"}</Text>
+        </View>
+
+        <View style={styles.pipeLineTrack}>
+          <View style={[styles.pipeLineFill, isOpen && styles.pipeLineActive]} />
+        </View>
+
+        <View style={styles.flowEndpoint}>
+          <Text style={styles.flowEndpointIcon}>🏠</Text>
+          <Text style={styles.flowEndpointLabel}>Your Tank</Text>
         </View>
       </View>
 
-      {/* Action Button */}
+      {/* Main Action Button - SOLID BLACK with WHITE TEXT */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[
-            styles.toggleBtn,
-            isOpen ? styles.btnOpen : styles.btnClose,
+            styles.mainButton,
             isFull && !isOpen && styles.btnDisabled,
           ]}
           onPress={handlePress}
           disabled={isSubmitting || (isFull && !isOpen)}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <View style={styles.btnContentRow}>
-              <Text style={styles.btnIcon}>{isOpen ? "🛑" : "💧"}</Text>
-              <Text style={styles.btnText}>
-                {isOpen ? "SHUT SUPPLY VALVE" : "OPEN SUPPLY VALVE"}
+            <View style={styles.btnInner}>
+              <Text style={styles.btnMainText}>
+                {isOpen ? "CLOSE WATER VALVE" : "OPEN WATER VALVE"}
+              </Text>
+              <Text style={styles.btnSubText}>
+                {isOpen
+                  ? "Tap to shut off municipal inlet water"
+                  : isFull
+                  ? "Locked off while tank is full"
+                  : "Tap to allow incoming municipal water"}
               </Text>
             </View>
           )}
         </TouchableOpacity>
-      </View>
-
-      {/* Diagnostics / Details */}
-      <View style={styles.diagnosticsRow}>
-        <View style={styles.diagItem}>
-          <Text style={styles.diagLabel}>Control Port</Text>
-          <Text style={styles.diagVal}>ESP32 GPIO 27</Text>
-        </View>
-        <View style={styles.diagItem}>
-          <Text style={styles.diagLabel}>Hardware Driver</Text>
-          <Text style={styles.diagVal}>LR7843 MOSFET</Text>
-        </View>
-        <View style={styles.diagItem}>
-          <Text style={styles.diagLabel}>Fail-Safe State</Text>
-          <Text style={[styles.diagVal, styles.textGreen]}>Normally Closed</Text>
-        </View>
       </View>
     </View>
   );
@@ -106,197 +106,181 @@ export default function ValveControl({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#111827",
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 20,
     marginHorizontal: 16,
-    marginVertical: 10,
+    marginVertical: 8,
     borderWidth: 1,
-    borderColor: "#1F2937",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 16,
   },
   cardTitle: {
-    color: "#9CA3AF",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
+    color: "#0F172A",
+    fontSize: 16,
+    fontWeight: "800",
   },
   cardSubtitle: {
-    color: "#F9FAFB",
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#64748B",
+    fontSize: 13,
     marginTop: 2,
   },
-  portBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: "flex-end",
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
-  portActive: {
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
-    borderColor: "#10B981",
+  badgeOpen: {
+    backgroundColor: "#E0F2FE",
   },
-  portStandby: {
-    backgroundColor: "#1F2937",
-    borderColor: "#374151",
+  badgeClosed: {
+    backgroundColor: "#F1F5F9",
   },
-  portLabel: {
-    color: "#9CA3AF",
-    fontSize: 9,
-    fontWeight: "600",
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
-  portState: {
-    color: "#D1D5DB",
-    fontSize: 10,
-    fontWeight: "800",
-    marginTop: 1,
+  dotOpen: {
+    backgroundColor: "#0284C7",
   },
-  textGreen: {
-    color: "#10B981",
+  dotClosed: {
+    backgroundColor: "#94A3B8",
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  textOpen: {
+    color: "#0284C7",
+  },
+  textClosed: {
+    color: "#64748B",
   },
   lockoutBanner: {
     flexDirection: "row",
-    backgroundColor: "rgba(245, 158, 11, 0.12)",
-    borderWidth: 1,
-    borderColor: "#F59E0B",
-    borderRadius: 10,
-    padding: 10,
     alignItems: "center",
-    marginBottom: 14,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
   },
   lockoutIcon: {
     fontSize: 18,
     marginRight: 8,
   },
   lockoutText: {
-    color: "#E5E7EB",
-    fontSize: 11,
     flex: 1,
+    color: "#166534",
+    fontSize: 12,
     lineHeight: 16,
-  },
-  pipeVisualContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 12,
-  },
-  pipeLine: {
-    flex: 1,
-    height: 6,
-    backgroundColor: "#374151",
-    borderRadius: 3,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  pipeFlowing: {
-    backgroundColor: "#00D2FF",
-  },
-  pipeLabel: {
-    position: "absolute",
-    top: -18,
-    fontSize: 9,
-    color: "#9CA3AF",
-    fontWeight: "600",
-  },
-  valveNode: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 12,
-    borderWidth: 2,
-  },
-  valveNodeOpen: {
-    backgroundColor: "rgba(0, 210, 255, 0.15)",
-    borderColor: "#00D2FF",
-  },
-  valveNodeClosed: {
-    backgroundColor: "#1F2937",
-    borderColor: "#4B5563",
-  },
-  valveIcon: {
-    fontSize: 22,
-  },
-  valveStateText: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#F3F4F6",
-    marginTop: 2,
-  },
-  buttonContainer: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  toggleBtn: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnOpen: {
-    backgroundColor: "#DC2626",
-    borderWidth: 1,
-    borderColor: "#EF4444",
-  },
-  btnClose: {
-    backgroundColor: "#0284C7",
-    borderWidth: 1,
-    borderColor: "#00D2FF",
-  },
-  btnDisabled: {
-    backgroundColor: "#374151",
-    borderColor: "#4B5563",
-    opacity: 0.5,
-  },
-  btnContentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  btnIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  btnText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-  },
-  diagnosticsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#1F2937",
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
-  },
-  diagItem: {
-    alignItems: "center",
-  },
-  diagLabel: {
-    color: "#9CA3AF",
-    fontSize: 9,
     fontWeight: "500",
   },
-  diagVal: {
-    color: "#E5E7EB",
-    fontSize: 11,
-    fontWeight: "700",
-    marginTop: 1,
+  flowGraphicRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  flowEndpoint: {
+    alignItems: "center",
+    width: 60,
+  },
+  flowEndpointIcon: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  flowEndpointLabel: {
+    color: "#64748B",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  pipeLineTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 2,
+    marginHorizontal: 8,
+    overflow: "hidden",
+  },
+  pipeLineFill: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "transparent",
+  },
+  pipeLineActive: {
+    backgroundColor: "#0EA5E9",
+  },
+  valveCenterIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  valveCenterActive: {
+    borderColor: "#0EA5E9",
+    backgroundColor: "#E0F2FE",
+  },
+  valveIconText: {
+    fontSize: 16,
+  },
+  buttonContainer: {
+    marginVertical: 4,
+  },
+  mainButton: {
+    backgroundColor: "#000000",
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  btnDisabled: {
+    opacity: 0.45,
+  },
+  btnInner: {
+    alignItems: "center",
+  },
+  btnMainText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  btnSubText: {
+    color: "#E2E8F0",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 4,
   },
 });

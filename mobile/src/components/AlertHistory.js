@@ -1,28 +1,28 @@
 import React from "react";
-import { View, Text, StyleSheet, FlatList } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
 export default function AlertHistory({ history = [] }) {
   const getEventBadge = (event) => {
     switch (event) {
       case "TANK_FULL":
-        return { icon: "💧", color: "#10B981", label: "TANK FULL", bg: "rgba(16, 185, 129, 0.15)" };
+        return { icon: "💧", color: "#16A34A", label: "Tank Full", bg: "#F0FDF4" };
       case "LOW_WATER":
-        return { icon: "⚠️", color: "#EF4444", label: "LOW WATER", bg: "rgba(239, 68, 68, 0.15)" };
+        return { icon: "⚠️", color: "#DC2626", label: "Low Water", bg: "#FEF2F2" };
       case "MOTOR_FAULT":
-        return { icon: "🚨", color: "#DC2626", label: "DRY-RUN FAULT", bg: "rgba(220, 38, 38, 0.2)" };
+        return { icon: "🚨", color: "#DC2626", label: "Safety Auto-Stop", bg: "#FEF2F2" };
       case "MOTOR_ON":
-        return { icon: "⚡", color: "#00D2FF", label: "MOTOR ON", bg: "rgba(0, 210, 255, 0.15)" };
+        return { icon: "⚡", color: "#0284C7", label: "Pump Started", bg: "#E0F2FE" };
       case "MOTOR_OFF":
-        return { icon: "⏹️", color: "#9CA3AF", label: "MOTOR OFF", bg: "rgba(156, 163, 175, 0.15)" };
+        return { icon: "⏹️", color: "#64748B", label: "Pump Stopped", bg: "#F1F5F9" };
       default:
-        return { icon: "ℹ️", color: "#9CA3AF", label: event, bg: "rgba(156, 163, 175, 0.15)" };
+        return { icon: "ℹ️", color: "#64748B", label: event || "Event", bg: "#F1F5F9" };
     }
   };
 
   const formatTimestamp = (ts) => {
     if (!ts) return "";
     const date = new Date(ts);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const safeHistory = Array.isArray(history)
@@ -41,16 +41,18 @@ export default function AlertHistory({ history = [] }) {
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.cardTitle}>SYSTEM AUDIT TRAIL</Text>
-          <Text style={styles.cardSubtitle}>Event & Alert History</Text>
+          <Text style={styles.cardTitle}>Activity History</Text>
+          <Text style={styles.cardSubtitle}>Recent tank events and alerts</Text>
         </View>
-        <Text style={styles.countBadge}>{safeHistory.length} Events</Text>
+        <View style={styles.countBadge}>
+          <Text style={styles.countText}>{safeHistory.length} recorded</Text>
+        </View>
       </View>
 
       {safeHistory.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={styles.emptyText}>No alerts or events recorded yet</Text>
+          <Text style={styles.emptyText}>No recent activity recorded</Text>
         </View>
       ) : (
         <View style={styles.listContainer}>
@@ -68,7 +70,7 @@ export default function AlertHistory({ history = [] }) {
                     <Text style={styles.eventTime}>{formatTimestamp(item.ts)}</Text>
                   </View>
                   <Text style={styles.eventNote} numberOfLines={1}>
-                    {item.note || `Motor: ${item.motorState} | Level: ${item.waterLevel}%`}
+                    {item.note || `Water level at ${item.waterLevel ?? "--"}%`}
                   </Text>
                 </View>
 
@@ -88,57 +90,67 @@ export default function AlertHistory({ history = [] }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#111827",
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 20,
     marginHorizontal: 16,
-    marginVertical: 10,
+    marginVertical: 8,
     borderWidth: 1,
-    borderColor: "#1F2937",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   cardTitle: {
-    color: "#9CA3AF",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.2,
+    color: "#0F172A",
+    fontSize: 16,
+    fontWeight: "800",
   },
   cardSubtitle: {
-    color: "#F9FAFB",
-    fontSize: 17,
-    fontWeight: "700",
+    color: "#64748B",
+    fontSize: 13,
     marginTop: 2,
   },
   countBadge: {
-    color: "#9CA3AF",
-    fontSize: 11,
-    fontWeight: "600",
-    backgroundColor: "#1F2937",
+    backgroundColor: "#F1F5F9",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
+  },
+  countText: {
+    color: "#64748B",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  emptyState: {
+    paddingVertical: 24,
+    alignItems: "center",
+  },
+  emptyIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  emptyText: {
+    color: "#94A3B8",
+    fontSize: 13,
   },
   listContainer: {
-    gap: 10,
+    marginTop: 4,
   },
   eventRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1F2937",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   eventIconBox: {
     width: 36,
@@ -153,51 +165,37 @@ const styles = StyleSheet.create({
   },
   eventDetails: {
     flex: 1,
+    marginRight: 8,
   },
   eventTopLine: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 2,
   },
   eventLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  eventTime: {
-    fontSize: 10,
-    color: "#9CA3AF",
-    fontWeight: "500",
-  },
-  eventNote: {
-    fontSize: 11,
-    color: "#D1D5DB",
-    marginTop: 2,
-  },
-  levelTag: {
-    backgroundColor: "#111827",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginLeft: 8,
-    borderWidth: 1,
-    borderColor: "#374151",
-  },
-  levelTagText: {
-    color: "#00D2FF",
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "700",
   },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 20,
+  eventTime: {
+    color: "#94A3B8",
+    fontSize: 11,
   },
-  emptyIcon: {
-    fontSize: 28,
-    marginBottom: 6,
+  eventNote: {
+    color: "#64748B",
+    fontSize: 12,
   },
-  emptyText: {
-    color: "#6B7280",
-    fontSize: 13,
+  levelTag: {
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  levelTagText: {
+    color: "#0F172A",
+    fontSize: 11,
+    fontWeight: "700",
   },
 });

@@ -19,62 +19,51 @@ export default function AlertBanner({
   if (motorFault) {
     activeAlert = {
       type: "critical",
-      icon: "🚨",
-      title: "DRY-RUN MOTOR FAULT",
-      desc: "Current dropped below 0.2A. MOSFET cut power.",
-      actionText: "RESET FAULT",
+      icon: "⚠️",
+      title: "Pump Auto-Stopped (Safety Guard)",
+      desc: "Pump stopped automatically to protect the motor from dry running.",
+      actionText: "Reset Pump Alert",
       action: onResetFault,
-      bg: "rgba(220, 38, 38, 0.2)",
-      border: "#EF4444",
-      textColor: "#EF4444",
-      btnBg: "#EF4444",
+      borderColor: "#FCA5A5",
+      bgColor: "#FEF2F2",
     };
   } else if (isLow) {
     activeAlert = {
       type: "warning",
-      icon: "⚠️",
-      title: "LOW WATER WARNING",
-      desc: `Tank level dropped to ${waterLevel}%. Tap to supply water.`,
-      actionText: valveOpen ? "VALVE OPEN" : "OPEN VALVE",
+      icon: "💧",
+      title: "Low Water Warning",
+      desc: `Tank is at ${waterLevel}%. Tap to open the water supply valve.`,
+      actionText: valveOpen ? "Valve Already Open" : "Open Water Valve",
       action: valveOpen ? null : onOpenValve,
-      bg: "rgba(245, 158, 11, 0.15)",
-      border: "#F59E0B",
-      textColor: "#F59E0B",
-      btnBg: "#F59E0B",
+      borderColor: "#FDE68A",
+      bgColor: "#FFFBEB",
     };
   } else if (isFull) {
     activeAlert = {
       type: "success",
-      icon: "💧",
-      title: "TANK FULL — OVERFLOW CUT-OFF",
-      desc: "Top probe submerged. Pump and valve locked off.",
+      icon: "✅",
+      title: "Tank is Completely Full",
+      desc: "Water level is at maximum. Pump and supply valve are safely shut.",
       actionText: null,
       action: null,
-      bg: "rgba(16, 185, 129, 0.15)",
-      border: "#10B981",
-      textColor: "#10B981",
-      btnBg: "#10B981",
+      borderColor: "#BBF7D0",
+      bgColor: "#F0FDF4",
     };
   }
 
   return (
     <View style={styles.container}>
       {activeAlert ? (
-        <View style={[styles.banner, { backgroundColor: activeAlert.bg, borderColor: activeAlert.border }]}>
-          <View style={styles.contentRow}>
+        <View style={[styles.banner, { backgroundColor: activeAlert.bgColor, borderColor: activeAlert.borderColor }]}>
+          <View style={styles.iconCol}>
             <Text style={styles.bannerIcon}>{activeAlert.icon}</Text>
-            <View style={styles.textWrap}>
-              <Text style={[styles.bannerTitle, { color: activeAlert.textColor }]}>
-                {activeAlert.title}
-              </Text>
-              <Text style={styles.bannerDesc} numberOfLines={2}>
-                {activeAlert.desc}
-              </Text>
-            </View>
-
+          </View>
+          <View style={styles.textWrap}>
+            <Text style={styles.bannerTitle}>{activeAlert.title}</Text>
+            <Text style={styles.bannerDesc}>{activeAlert.desc}</Text>
             {activeAlert.actionText && (
               <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: activeAlert.btnBg }]}
+                style={[styles.actionBtn, !activeAlert.action && styles.btnDisabled]}
                 onPress={activeAlert.action}
                 disabled={!activeAlert.action}
                 activeOpacity={0.8}
@@ -88,15 +77,14 @@ export default function AlertBanner({
         <View style={styles.quietBar}>
           <View style={styles.quietLeft}>
             <View style={styles.quietDot} />
-            <Text style={styles.quietText}>All Systems Nominal • Overflow Guard Active</Text>
+            <Text style={styles.quietText}>All systems normal • Automatic guards active</Text>
           </View>
           <TouchableOpacity
-            style={styles.bellBtn}
+            style={styles.settingsBtn}
             onPress={onOpenSettings}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Text style={styles.bellIcon}>🔔</Text>
-            <Text style={styles.bellText}>Alerts</Text>
+            <Text style={styles.settingsBtnText}>Alert Settings</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -107,89 +95,96 @@ export default function AlertBanner({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   banner: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-  },
-  contentRow: {
     flexDirection: "row",
-    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "flex-start",
+  },
+  iconCol: {
+    marginRight: 12,
+    marginTop: 2,
   },
   bannerIcon: {
-    fontSize: 24,
-    marginRight: 10,
+    fontSize: 22,
   },
   textWrap: {
     flex: 1,
-    marginRight: 8,
   },
   bannerTitle: {
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.5,
+    color: "#0F172A",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
   },
   bannerDesc: {
-    color: "#E2E8F0",
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
+    color: "#475569",
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
   },
   actionBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
+    backgroundColor: "#000000",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
   actionBtnText: {
-    color: "#0B132B",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   quietBar: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    borderRadius: 10,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderColor: "#E5E7EB",
   },
   quietLeft: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+    marginRight: 10,
   },
   quietDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 4,
-    backgroundColor: "#10B981",
+    backgroundColor: "#16A34A",
     marginRight: 8,
   },
   quietText: {
-    color: "#94A3B8",
+    color: "#475569",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  settingsBtn: {
+    backgroundColor: "#000000",
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  settingsBtnText: {
+    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "600",
-  },
-  bellBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 210, 255, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  bellIcon: {
-    fontSize: 11,
-    marginRight: 4,
-  },
-  bellText: {
-    color: "#00D2FF",
-    fontSize: 11,
-    fontWeight: "700",
   },
 });
