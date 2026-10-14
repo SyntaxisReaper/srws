@@ -1,21 +1,45 @@
-import { isRunningInExpoGo } from "expo";
+import * as Notifications from "expo-notifications";
 import { Platform, Vibration } from "react-native";
+import { isRunningInExpoGo } from "expo";
 
-let Notifications = null;
+// Configure foreground notification presentation handler for Expo SDK 53-57+
+// Using shouldShowBanner and shouldShowList (shouldShowAlert is deprecated)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    priority: Notifications.AndroidNotificationPriority?.MAX,
+  }),
+});
 
-// Only load native expo-notifications when NOT running in Expo Go (SDK 53+ restriction)
-if (!isRunningInExpoGo()) {
-  try {
-    Notifications = require("expo-notifications");
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
-  } catch (err) {
-    console.warn("[NotificationService] Native notifications not available:", err?.message);
+let channelReady = false;
+
+/**
+ * Creates high-priority notification channels for Android 8.0+
+ * In Expo Go, dynamic channel creation via NotificationsChannelsProvider is unsupported
+ * and automatically falls back to Expo's built-in high-importance channel.
+ */
+export async function setupNotificationChannels() {
+  if (Platform.OS === "android" && !channelReady) {
+    if (isRunningInExpoGo()) {
+      return;
+    }
+    try {
+      await Notifications.setNotificationChannelAsync("hydronode_alerts", {
+        name: "HydroNode Water Alerts",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 300, 200, 300],
+        lightColor: "#00D2FF",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+      channelReady = true;
+    } catch (err) {
+      // In standalone builds, channel setup errors are non-fatal
+    }
   }
 }
 
@@ -23,20 +47,8 @@ if (!isRunningInExpoGo()) {
  * Initializes notification channels and requests permissions on Android/iOS.
  */
 export async function registerForPushNotificationsAsync() {
-  if (!Notifications || isRunningInExpoGo()) {
-    return false;
-  }
-
   try {
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("hydronode_alerts", {
-        name: "HydroNode Alerts",
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 300, 200, 300],
-        lightColor: "#00D2FF",
-        sound: "default",
-      });
-    }
+    await setupNotificationChannels();
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -48,7 +60,6 @@ export async function registerForPushNotificationsAsync() {
 
     return finalStatus === "granted";
   } catch (err) {
-    console.warn("[NotificationService] Setup notice:", err.message);
     return false;
   }
 }
@@ -58,28 +69,38 @@ export async function registerForPushNotificationsAsync() {
  */
 export async function triggerNativeAlert(title, body, alertType = "default") {
   try {
-    // Hardware vibration pattern (works everywhere)
+    // 1. Hardware vibration pattern (works on physical phone & emulator)
     if (alertType === "critical") {
       Vibration.vibrate([0, 500, 200, 500]);
     } else {
       Vibration.vibrate([0, 250, 150, 250]);
     }
 
-    if (!Notifications || isRunningInExpoGo()) {
-      return;
+    // 2. Ensure Android channel is registered if in standalone build
+    await setupNotificationChannels();
+
+    // 3. Prepare notification content
+    const content = {
+      title,
+      body,
+      sound: "default",
+      priority: Notifications.AndroidNotificationPriority?.MAX,
+      data: { alertType, ts: Date.now() },
+    };
+
+    // If channel was successfully registered (standalone build), attach custom channelId
+    if (channelReady) {
+      content.channelId = "hydronode_alerts";
     }
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        sound: "default",
-        priority: Notifications.AndroidNotificationPriority.MAX,
-        data: { alertType, ts: Date.now() },
-      },
-      trigger: null, // null means trigger immediately
+    // 4. Schedule immediate notification (trigger: null)
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content,
+      trigger: null,
     });
+    return notificationId;
   } catch (err) {
-    console.warn("[NotificationService] Notification dispatch notice:", err.message);
+    console.warn("[NotificationService] Notification dispatch notice:", err?.message);
+    return null;
   }
 }

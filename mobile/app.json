@@ -28,14 +28,22 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "VIBRATE",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#00D2FF"
+        }
+      ]
     ]
   }
 }

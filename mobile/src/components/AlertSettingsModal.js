@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Switch } from "react-native";
-import { triggerNativeAlert } from "../services/notificationService";
+import {
+  triggerNativeAlert,
+  registerForPushNotificationsAsync,
+} from "../services/notificationService";
 
 export default function AlertSettingsModal({
   visible = false,
@@ -14,6 +17,7 @@ export default function AlertSettingsModal({
 
   const handleTestAlert = async () => {
     setTestSent(true);
+    await registerForPushNotificationsAsync();
     await triggerNativeAlert(
       "💧 HydroNode Alert Test",
       "Notification system working! Overflow protection & pump guards are active.",
