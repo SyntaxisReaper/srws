@@ -16,7 +16,7 @@ export default function WaterLevelGauge({
   let statusLabel = "Normal Level";
   let statusBadgeBg = "#F0FDF4";
   let statusTextColor = "#16A34A";
-  let waterColor = "#0EA5E9"; // Fresh, crisp water blue
+  let waterColor = "#0EA5E9"; // Fresh vibrant sky blue
 
   if (probeTop || waterLevel >= 90) {
     statusLabel = "Tank Full";
@@ -37,12 +37,12 @@ export default function WaterLevelGauge({
 
   return (
     <View style={styles.card}>
-      {/* Header */}
+      {/* Header - Bigger, Prominent & Highlighted */}
       <View style={styles.headerRow}>
-        <View>
+        <View style={styles.headerTextGroup}>
           <Text style={styles.cardTitle}>Water Tank Level</Text>
           <Text style={styles.cardSubtitle}>
-            {liters} of {capacityLiters} Liters available
+            {liters} of {capacityLiters} Liters available in tank
           </Text>
         </View>
 
@@ -64,22 +64,28 @@ export default function WaterLevelGauge({
             {/* Full Marker Line */}
             <View style={[styles.levelLine, { top: "12%" }]}>
               <View style={[styles.probeDot, (probeTop || waterLevel >= 90) && styles.probeDotWet]} />
-              <Text style={styles.levelMarkerText}>Full (90%)</Text>
+              <View style={styles.markerBadge}>
+                <Text style={styles.levelMarkerText}>Full (90%)</Text>
+              </View>
             </View>
 
             {/* Half Marker Line */}
             <View style={[styles.levelLine, { top: "50%" }]}>
               <View style={[styles.probeDot, (probeMid || waterLevel >= 50) && styles.probeDotWet]} />
-              <Text style={styles.levelMarkerText}>Half (50%)</Text>
+              <View style={styles.markerBadge}>
+                <Text style={styles.levelMarkerText}>Half (50%)</Text>
+              </View>
             </View>
 
             {/* Low Marker Line */}
             <View style={[styles.levelLine, { top: "80%" }]}>
               <View style={[styles.probeDot, (probeLow || waterLevel >= 20) && styles.probeDotWet]} />
-              <Text style={styles.levelMarkerText}>Low (20%)</Text>
+              <View style={styles.markerBadge}>
+                <Text style={styles.levelMarkerText}>Low (20%)</Text>
+              </View>
             </View>
 
-            {/* Fluid fill with smooth rounded wave */}
+            {/* Fluid fill with smooth surface */}
             <View
               style={[
                 styles.fluidFill,
@@ -97,13 +103,15 @@ export default function WaterLevelGauge({
           <View style={styles.tankBase} />
         </View>
 
-        {/* Readout Metrics */}
+        {/* Readout Metrics - MASSIVE & HIGHLIGHTED */}
         <View style={styles.metricsColumn}>
-          <View style={styles.percentageContainer}>
+          {/* Highlighted Percentage Hero Display */}
+          <View style={styles.percentageHero}>
             <Text style={styles.percentageNumber}>{waterLevel}</Text>
             <Text style={styles.percentageSymbol}>%</Text>
           </View>
 
+          {/* Volume Highlight Box */}
           <View style={styles.volumeBox}>
             <Text style={styles.volumeLabel}>Current Volume</Text>
             <Text style={styles.volumeValue}>
@@ -111,7 +119,7 @@ export default function WaterLevelGauge({
             </Text>
           </View>
 
-          {/* Sensor Points - Simplified for everyday users */}
+          {/* Sensor Points */}
           <View style={styles.sensorStatusBox}>
             <View style={styles.sensorRow}>
               <Text style={styles.sensorName}>Top Sensor:</Text>
@@ -178,50 +186,56 @@ export default function WaterLevelGauge({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 22,
+    padding: 22,
     marginHorizontal: 16,
     marginVertical: 8,
     borderWidth: 1,
     borderColor: "#E5E7EB",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 18,
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  headerTextGroup: {
+    flex: 1,
+    marginRight: 10,
   },
   cardTitle: {
     color: "#0F172A",
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 20, // Bigger & prominent
+    fontWeight: "900",
+    letterSpacing: 0.2,
   },
   cardSubtitle: {
     color: "#64748B",
     fontSize: 13,
-    marginTop: 2,
+    fontWeight: "500",
+    marginTop: 4,
   },
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 20,
   },
   badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
     marginRight: 6,
   },
   badgeText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
   },
   tankOuterContainer: {
     flexDirection: "row",
@@ -229,22 +243,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   tankFrame: {
-    width: 110,
-    height: 190,
+    width: 120,
+    height: 200,
     alignItems: "center",
   },
   tankLid: {
-    width: 70,
-    height: 8,
-    backgroundColor: "#CBD5E1",
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
+    width: 80,
+    height: 9,
+    backgroundColor: "#94A3B8",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   tankInterior: {
-    width: 100,
+    width: 110,
     flex: 1,
     backgroundColor: "#F1F5F9",
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: "#CBD5E1",
     overflow: "hidden",
@@ -253,26 +267,32 @@ const styles = StyleSheet.create({
   },
   levelLine: {
     position: "absolute",
-    left: 6,
-    right: 6,
+    left: 8,
+    right: 8,
     flexDirection: "row",
     alignItems: "center",
     zIndex: 10,
   },
   probeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: "#94A3B8",
-    marginRight: 4,
+    marginRight: 5,
   },
   probeDotWet: {
     backgroundColor: "#0EA5E9",
   },
+  markerBadge: {
+    backgroundColor: "rgba(15, 23, 42, 0.7)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
   levelMarkerText: {
-    fontSize: 9,
-    color: "#64748B",
-    fontWeight: "600",
+    fontSize: 10,
+    color: "#FFFFFF", // Sharp white text with dark backdrop pill for 100% readability
+    fontWeight: "800",
   },
   fluidFill: {
     width: "100%",
@@ -282,76 +302,86 @@ const styles = StyleSheet.create({
     right: 0,
   },
   fluidSurface: {
-    height: 4,
+    height: 5,
     width: "100%",
-    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    backgroundColor: "rgba(255, 255, 255, 0.45)",
   },
   tankBase: {
-    width: 90,
-    height: 6,
-    backgroundColor: "#94A3B8",
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
+    width: 100,
+    height: 8,
+    backgroundColor: "#64748B",
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
   },
   metricsColumn: {
     flex: 1,
-    marginLeft: 20,
+    marginLeft: 18,
     justifyContent: "center",
   },
-  percentageContainer: {
+  percentageHero: {
     flexDirection: "row",
     alignItems: "baseline",
     marginBottom: 8,
   },
   percentageNumber: {
     color: "#0F172A",
-    fontSize: 44,
+    fontSize: 56, // MASSIVE HERO NUMBER
     fontWeight: "900",
+    letterSpacing: -1,
   },
   percentageSymbol: {
     color: "#0EA5E9",
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 30,
+    fontWeight: "900",
     marginLeft: 4,
   },
   volumeBox: {
-    marginBottom: 12,
+    backgroundColor: "#F8FAFC",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 10,
   },
   volumeLabel: {
     color: "#64748B",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   volumeValue: {
     color: "#0F172A",
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 18, // Highlighted volume
+    fontWeight: "900",
+    marginTop: 2,
   },
   volumeUnit: {
     color: "#64748B",
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
   },
   sensorStatusBox: {
     backgroundColor: "#F8FAFC",
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   sensorRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   sensorName: {
     color: "#64748B",
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   sensorVal: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   valActive: {
     color: "#0EA5E9",
@@ -368,7 +398,7 @@ const styles = StyleSheet.create({
   calibrationLabel: {
     color: "#64748B",
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     marginBottom: 8,
   },
   calibrationButtons: {
@@ -377,8 +407,8 @@ const styles = StyleSheet.create({
   },
   calBtn: {
     backgroundColor: "#000000",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderRadius: 8,
     flex: 1,
     marginHorizontal: 3,
@@ -387,6 +417,6 @@ const styles = StyleSheet.create({
   calBtnText: {
     color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 });
