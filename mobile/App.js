@@ -23,6 +23,9 @@ import SchedulerPanel from "./src/components/SchedulerPanel";
 import AlertBanner from "./src/components/AlertBanner";
 import AlertSettingsModal from "./src/components/AlertSettingsModal";
 import WaterUsageChart from "./src/components/WaterUsageChart";
+import HomeAssistantCard from "./src/components/HomeAssistantCard";
+import HelpFaqModal from "./src/components/HelpFaqModal";
+import VoiceControlModal from "./src/components/VoiceControlModal";
 import { DEFAULT_DEVICE_ID } from "./src/services/firebaseConfig";
 import {
   registerForPushNotificationsAsync,
@@ -34,6 +37,8 @@ export default function App() {
   const [useSimulation, setUseSimulation] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const toastTimeoutRef = useRef(null);
   const prevStatusRef = useRef({ waterLevel: 50, motorFault: false });
@@ -196,20 +201,39 @@ export default function App() {
           </View>
         </View>
 
-        {/* Black Button with White Text */}
-        <TouchableOpacity
-          style={styles.infoBadge}
-          onPress={() => {
-            const nextMode = !useSimulation;
-            setUseSimulation(nextMode);
-            showToast(nextMode ? "Demo Mode Active" : "Live Device Active");
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.infoBadgeText}>
-            {useSimulation ? "● DEMO" : "● LIVE"}
-          </Text>
-        </TouchableOpacity>
+        {/* Top Header Buttons */}
+        <View style={styles.headerRightGroup}>
+          <TouchableOpacity
+            style={styles.voiceHeaderBtn}
+            onPress={() => setShowVoiceModal(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.voiceHeaderIcon}>🎙️</Text>
+            <Text style={styles.voiceHeaderText}>VOICE</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.helpHeaderBtn}
+            onPress={() => setShowHelpModal(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.helpHeaderIcon}>❓</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.infoBadge}
+            onPress={() => {
+              const nextMode = !useSimulation;
+              setUseSimulation(nextMode);
+              showToast(nextMode ? "Demo Mode Active" : "Live Device Active");
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.infoBadgeText}>
+              {useSimulation ? "● DEMO" : "● LIVE"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Scrollable Content for the Active Tab */}
@@ -229,6 +253,22 @@ export default function App() {
         {/* TAB 1: OVERVIEW & CONTROLS */}
         {activeTab === "overview" && (
           <View style={styles.tabContent}>
+            {/* Friendly Personalized Home Assistant Card */}
+            <HomeAssistantCard
+              waterLevel={status.waterLevel ?? 60}
+              motorRunning={status.motorRunning || false}
+              motorFault={status.motorFault || false}
+              valveOpen={status.valveOpen || status.valveState === "OPEN"}
+              capacityLiters={config.tankCapacityLiters || 20}
+              onQuickTopUp={(mins) => {
+                handleToggleMotor("ON");
+                showToast(`💧 Started ${mins}-minute auto-stop refill`);
+              }}
+              onStopPump={() => handleToggleMotor("OFF")}
+              onOpenVoice={() => setShowVoiceModal(true)}
+              onOpenHelp={() => setShowHelpModal(true)}
+            />
+
             {/* Device Status & Network Health */}
             <StatusBarComponent
               deviceId={DEFAULT_DEVICE_ID}
@@ -260,6 +300,8 @@ export default function App() {
               probeLow={status.probeLow !== false}
               tankHeight={config.tankHeightCm || 30}
               capacityLiters={config.tankCapacityLiters || 20}
+              motorRunning={status.motorRunning || false}
+              valveOpen={status.valveOpen || status.valveState === "OPEN"}
               onLevelAdjust={useSimulation ? changeWaterLevel : null}
             />
 
@@ -483,6 +525,24 @@ export default function App() {
         visible={showAlertSettings}
         onClose={() => setShowAlertSettings(false)}
       />
+
+      {/* Help & FAQ Homeowner Guide Modal */}
+      <HelpFaqModal
+        visible={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+      />
+
+      {/* Voice Control Assistant Modal */}
+      <VoiceControlModal
+        visible={showVoiceModal}
+        waterLevel={status.waterLevel ?? 60}
+        motorRunning={status.motorRunning || false}
+        valveOpen={status.valveOpen || status.valveState === "OPEN"}
+        capacityLiters={config.tankCapacityLiters || 20}
+        onToggleMotor={handleToggleMotor}
+        onToggleValve={handleToggleValve}
+        onClose={() => setShowVoiceModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -502,6 +562,48 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
     backgroundColor: "#FFFFFF",
+  },
+  headerRightGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  voiceHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#000000",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginRight: 8,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  voiceHeaderIcon: {
+    fontSize: 13,
+    marginRight: 4,
+  },
+  voiceHeaderText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  helpHeaderBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  helpHeaderIcon: {
+    fontSize: 16,
   },
   titleRow: {
     flexDirection: "row",

@@ -9,6 +9,8 @@ export default function WaterLevelGauge({
   probeLow = true,
   tankHeight = 30,
   capacityLiters = 20,
+  motorRunning = false,
+  valveOpen = false,
   onLevelAdjust = null,
 }) {
   const [showSimControls, setShowSimControls] = useState(false);
@@ -64,6 +66,13 @@ export default function WaterLevelGauge({
           <View style={styles.tankInterior}>
             {/* Gloss reflection highlight on left */}
             <View style={styles.glassHighlight} />
+
+            {/* Active Inflow Stream Indicator */}
+            {(motorRunning || valveOpen) && (
+              <View style={styles.inflowPill}>
+                <Text style={styles.inflowText}>⬇️ Refilling...</Text>
+              </View>
+            )}
 
             {/* High-Contrast Level Markers */}
             <View style={[styles.levelLine, { top: "12%" }]}>
@@ -124,6 +133,17 @@ export default function WaterLevelGauge({
                 {liters} <Text style={styles.volumeUnit}>/ {capacityLiters} Liters</Text>
               </Text>
             </View>
+          </View>
+
+          {/* Household Equivalency Pill */}
+          <View style={styles.householdEquivBox}>
+            <Text style={styles.householdEquivText}>
+              {waterLevel >= 70
+                ? "🚿 ~3 Showers • 🧺 2 Laundry loads"
+                : waterLevel >= 30
+                ? "🚿 ~1-2 Showers • 🍽️ Dishes ready"
+                : "⚠️ Low: Quick top-up recommended"}
+            </Text>
           </View>
 
           {/* Visual 3-Stage Sensor Level Indicators */}
@@ -387,6 +407,41 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginLeft: 4,
   },
+  inflowPill: {
+    position: "absolute",
+    top: 8,
+    alignSelf: "center",
+    backgroundColor: "#000000",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    zIndex: 25,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  inflowText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.4,
+  },
+  householdEquivBox: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginBottom: 8,
+    alignItems: "center",
+  },
+  householdEquivText: {
+    color: "#475569",
+    fontSize: 10,
+    fontWeight: "700",
+    textAlign: "center",
+  },
   volumeBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -396,7 +451,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   volumeIconCircle: {
     width: 32,
