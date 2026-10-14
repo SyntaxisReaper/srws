@@ -34,6 +34,7 @@ google-services.json
 Thumbs.db
 .idea/
 *.iml
+qr_codes/
 
 # Documentation, notes, and system design files (ONLY README.md is pushed to GitHub)
 *.md

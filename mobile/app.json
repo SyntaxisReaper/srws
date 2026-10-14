@@ -29,7 +29,8 @@
         "ACCESS_NETWORK_STATE",
         "VIBRATE",
         "RECORD_AUDIO",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "CAMERA"
       ]
     },
     "web": {
@@ -42,6 +43,12 @@
         {
           "icon": "./assets/icon.png",
           "color": "#00D2FF"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow HydroNode to scan device QR codes on physical units"
         }
       ]
     ]

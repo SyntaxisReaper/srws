@@ -40,6 +40,12 @@ let simulatedDeviceState = {
     offTime: "06:30",
     days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
   },
+  meta: {
+    claimed: true,
+    ownerId: "homeowner_primary",
+    deviceName: "Overhead Water Tank",
+    pairedAt: Date.now() - 86400000 * 30,
+  },
   config: {
     tankHeightCm: 30,
     fullThreshold: 90,
@@ -491,6 +497,88 @@ export const updateScheduleConfig = async (deviceId, config, useSimulation = fal
     console.error("[DeviceService] Schedule update error:", err);
     return false;
   }
+};
+
+/**
+ * QR Code Onboarding & Ownership Claiming
+ * Links a physical HydroNode unit to a homeowner account.
+ */
+export const claimDevice = async (
+  deviceId,
+  userId = "homeowner_primary",
+  deviceName = "HydroNode Tank",
+  useSimulation = false
+) => {
+  const targetId = (deviceId || "").trim();
+  if (!targetId) {
+    throw new Error("Device ID cannot be empty");
+  }
+
+  if (useSimulation || !isFirebaseConfigured()) {
+    const meta = {
+      claimed: true,
+      ownerId: userId,
+      deviceName,
+      pairedAt: Date.now(),
+    };
+    simulatedDeviceState = {
+      ...simulatedDeviceState,
+      meta,
+    };
+    notifySimulationListeners();
+    return { success: true, deviceId: targetId, meta };
+  }
+
+  // 1. Check if device exists and verify ownership status
+  const metaUrl = `${firebaseConfig.databaseURL}/devices/${targetId}/meta.json`;
+  let existingMeta = null;
+  try {
+    const getRes = await fetch(metaUrl);
+    if (getRes.ok) {
+      existingMeta = await getRes.json();
+    }
+  } catch (err) {
+    console.warn("[DeviceService] Could not pre-fetch meta:", err.message);
+  }
+
+  if (
+    existingMeta &&
+    existingMeta.claimed &&
+    existingMeta.ownerId &&
+    existingMeta.ownerId !== userId
+  ) {
+    throw new Error(
+      "This HydroNode unit is already paired to another homeowner account."
+    );
+  }
+
+  const metaData = {
+    claimed: true,
+    ownerId: userId,
+    deviceName,
+    pairedAt: Date.now(),
+  };
+
+  // 2. Claim device in /devices/{id}/meta
+  const claimRes = await fetch(metaUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(metaData),
+  });
+
+  if (!claimRes.ok) {
+    throw new Error(`Failed to claim device: ${claimRes.statusText}`);
+  }
+
+  // 3. Link device to user's device list
+  const userDevicesUrl = `${firebaseConfig.databaseURL}/users/${userId}/devices/${targetId}.json`;
+  await fetch(userDevicesUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(true),
+  }).catch(() => {});
+
+  return { success: true, deviceId: targetId, meta: metaData };
 };
 
 // Simulation refill loop

@@ -28,6 +28,7 @@ import HelpFaqModal from "./src/components/HelpFaqModal";
 import VoiceControlModal from "./src/components/VoiceControlModal";
 import StartupScreen from "./src/components/StartupScreen";
 import OfflineBanner from "./src/components/OfflineBanner";
+import QRScannerModal from "./src/components/QRScannerModal";
 import { useDeviceOnlineStatus } from "./src/hooks/useDeviceOnlineStatus";
 import { DEFAULT_DEVICE_ID } from "./src/services/firebaseConfig";
 import {
@@ -36,12 +37,14 @@ import {
 } from "./src/services/notificationService";
 
 export default function App() {
+  const [currentDeviceId, setCurrentDeviceId] = useState(DEFAULT_DEVICE_ID);
   const [activeTab, setActiveTab] = useState("overview"); // "overview" | "automation" | "activity"
   const [useSimulation, setUseSimulation] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [isStartupComplete, setIsStartupComplete] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const toastTimeoutRef = useRef(null);
@@ -66,7 +69,7 @@ export default function App() {
     simulateFault,
     changeWaterLevel,
     saveSchedule,
-  } = useDeviceStatus(DEFAULT_DEVICE_ID, useSimulation);
+  } = useDeviceStatus(currentDeviceId, useSimulation);
 
   const status = deviceData?.status || {};
   const commands = deviceData?.commands || {};
@@ -250,6 +253,15 @@ export default function App() {
         {/* Top Header Buttons */}
         <View style={styles.headerRightGroup}>
           <TouchableOpacity
+            style={styles.qrHeaderBtn}
+            onPress={() => setShowQRModal(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.qrHeaderIcon}>📷</Text>
+            <Text style={styles.qrHeaderText}>PAIR</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.voiceHeaderBtn}
             onPress={() => setShowVoiceModal(true)}
             activeOpacity={0.8}
@@ -323,7 +335,7 @@ export default function App() {
 
             {/* Device Status & Network Health */}
             <StatusBarComponent
-              deviceId={DEFAULT_DEVICE_ID}
+              deviceId={currentDeviceId}
               lastSeen={status.lastSeen}
               wifiStrength={status.wifiStrength || -65}
               networkUplink={status.networkUplink || "Wi-Fi Connected"}
@@ -614,6 +626,18 @@ export default function App() {
         onClose={() => setShowVoiceModal(false)}
       />
 
+      {/* QR Code Onboarding Scanner Modal */}
+      <QRScannerModal
+        visible={showQRModal}
+        currentDeviceId={currentDeviceId}
+        useSimulation={useSimulation}
+        onClose={() => setShowQRModal(false)}
+        onDevicePaired={(newId) => {
+          setCurrentDeviceId(newId);
+          showToast(`✓ Switched to ${newId}`);
+        }}
+      />
+
       {/* Modern Startup Animation Overlay */}
       {!isStartupComplete && (
         <StartupScreen onFinish={() => setIsStartupComplete(true)} />
@@ -641,6 +665,30 @@ const styles = StyleSheet.create({
   headerRightGroup: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  qrHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#000000",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 14,
+    marginRight: 6,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  qrHeaderIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  qrHeaderText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
   voiceHeaderBtn: {
     flexDirection: "row",
