@@ -1,19 +1,32 @@
-import * as Notifications from "expo-notifications";
+import { isRunningInExpoGo } from "expo";
 import { Platform, Vibration } from "react-native";
 
-// Configure how notifications are handled when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+let Notifications = null;
+
+// Only load native expo-notifications when NOT running in Expo Go (SDK 53+ restriction)
+if (!isRunningInExpoGo()) {
+  try {
+    Notifications = require("expo-notifications");
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  } catch (err) {
+    console.warn("[NotificationService] Native notifications not available:", err?.message);
+  }
+}
 
 /**
  * Initializes notification channels and requests permissions on Android/iOS.
  */
 export async function registerForPushNotificationsAsync() {
+  if (!Notifications || isRunningInExpoGo()) {
+    return false;
+  }
+
   try {
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("hydronode_alerts", {
@@ -45,11 +58,15 @@ export async function registerForPushNotificationsAsync() {
  */
 export async function triggerNativeAlert(title, body, alertType = "default") {
   try {
-    // Hardware vibration pattern
+    // Hardware vibration pattern (works everywhere)
     if (alertType === "critical") {
       Vibration.vibrate([0, 500, 200, 500]);
     } else {
       Vibration.vibrate([0, 250, 150, 250]);
+    }
+
+    if (!Notifications || isRunningInExpoGo()) {
+      return;
     }
 
     await Notifications.scheduleNotificationAsync({

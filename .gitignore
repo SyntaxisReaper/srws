@@ -28,9 +28,11 @@ database_seed.json
 google-services.json
 **/google-services.json
 
-# System files
+# System & IDE files
 .DS_Store
 Thumbs.db
+.idea/
+*.iml
 
 # Documentation, notes, and system design files (ONLY README.md is pushed to GitHub)
 *.md

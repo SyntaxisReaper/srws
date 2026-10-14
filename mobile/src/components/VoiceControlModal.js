@@ -9,17 +9,18 @@ import {
   Animated,
   Platform,
 } from "react-native";
+import { isRunningInExpoGo } from "expo";
 import * as Speech from "expo-speech";
 
-// Safely import ExpoSpeechRecognitionModule
+// Safely import ExpoSpeechRecognitionModule when not in Expo Go
 let ExpoSpeechRecognitionModule = null;
-let useSpeechRecognitionEvent = null;
-try {
-  const SpeechRec = require("expo-speech-recognition");
-  ExpoSpeechRecognitionModule = SpeechRec.ExpoSpeechRecognitionModule;
-  useSpeechRecognitionEvent = SpeechRec.useSpeechRecognitionEvent;
-} catch (e) {
-  // Graceful fallback if native module linking differs
+if (!isRunningInExpoGo()) {
+  try {
+    const SpeechRec = require("expo-speech-recognition");
+    ExpoSpeechRecognitionModule = SpeechRec.ExpoSpeechRecognitionModule;
+  } catch (e) {
+    // Graceful fallback
+  }
 }
 
 export default function VoiceControlModal({
@@ -65,30 +66,51 @@ export default function VoiceControlModal({
     return () => animation && animation.stop();
   }, [isListening]);
 
-  // Hook into native speech recognition events if available
-  if (useSpeechRecognitionEvent) {
-    useSpeechRecognitionEvent("start", () => {
-      setIsListening(true);
-      setResponseMessage("Listening to your voice...");
-    });
+  // Hook into native speech recognition events via useEffect
+  useEffect(() => {
+    if (!ExpoSpeechRecognitionModule?.addSpeechRecognitionListener) return;
 
-    useSpeechRecognitionEvent("end", () => {
-      setIsListening(false);
-    });
-
-    useSpeechRecognitionEvent("result", (event) => {
-      const recognized = event.results?.[0]?.transcript || "";
-      if (recognized) {
-        setTranscript(recognized);
-        executeVoiceCommand(recognized);
+    const subResult = ExpoSpeechRecognitionModule.addSpeechRecognitionListener(
+      "result",
+      (event) => {
+        const recognized = event.results?.[0]?.transcript || "";
+        if (recognized) {
+          setTranscript(recognized);
+          executeVoiceCommand(recognized);
+        }
       }
-    });
+    );
 
-    useSpeechRecognitionEvent("error", (event) => {
-      setIsListening(false);
-      setResponseMessage("Could not hear clearly. Please tap to try again or choose a shortcut.");
-    });
-  }
+    const subStart = ExpoSpeechRecognitionModule.addSpeechRecognitionListener?.(
+      "start",
+      () => {
+        setIsListening(true);
+        setResponseMessage("Listening to your voice...");
+      }
+    );
+
+    const subEnd = ExpoSpeechRecognitionModule.addSpeechRecognitionListener?.(
+      "end",
+      () => {
+        setIsListening(false);
+      }
+    );
+
+    const subError = ExpoSpeechRecognitionModule.addSpeechRecognitionListener?.(
+      "error",
+      () => {
+        setIsListening(false);
+        setResponseMessage("Could not hear clearly. Please tap to try again or choose a shortcut.");
+      }
+    );
+
+    return () => {
+      subResult?.remove?.();
+      subStart?.remove?.();
+      subEnd?.remove?.();
+      subError?.remove?.();
+    };
+  }, []);
 
   // Speak aloud through speaker
   const speakResponse = (text) => {
