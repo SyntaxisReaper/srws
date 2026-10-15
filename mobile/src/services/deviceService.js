@@ -127,11 +127,11 @@ export const subscribeToDeviceState = (deviceId, callback, useSimulation = false
           const normalized = {
             ...data,
             history: normalizeHistory(data.history),
-            schedule: data.schedule || {
-              enabled: data.commands?.autoMode !== false,
-              onTime: data.commands?.scheduledOn || "06:00",
-              offTime: data.commands?.scheduledOff || "06:30",
-              days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+            schedule: {
+              enabled: data.schedule?.enabled ?? (data.commands?.autoMode !== false),
+              onTime: data.schedule?.onTime || data.commands?.scheduledOn || "06:00",
+              offTime: data.schedule?.offTime || data.commands?.scheduledOff || "06:30",
+              days: data.schedule?.days || ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
             },
             status: {
               ...data.status,
@@ -592,10 +592,33 @@ export const updateScheduleConfig = async (deviceId, config, useSimulation = fal
       }).catch(() => {}),
     ]);
 
-    return res1.ok;
+    if (!res1.ok) {
+      throw new Error(`Schedule write to Firebase failed: ${res1.statusText}`);
+    }
+
+    // Optimistically update lastLiveState and notify subscribers
+    if (lastLiveState) {
+      lastLiveState = {
+        ...lastLiveState,
+        schedule: normalizedSchedule,
+        commands: {
+          ...lastLiveState.commands,
+          autoMode: normalizedSchedule.enabled,
+          scheduledOn: normalizedSchedule.onTime,
+          scheduledOff: normalizedSchedule.offTime,
+        },
+      };
+      liveStateListeners.forEach((listener) => {
+        try {
+          listener(lastLiveState);
+        } catch (_) {}
+      });
+    }
+
+    return true;
   } catch (err) {
     console.error("[DeviceService] Schedule update error:", err);
-    return false;
+    throw err;
   }
 };
 

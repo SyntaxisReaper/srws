@@ -151,10 +151,36 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
   const saveSchedule = useCallback(
     async (scheduleConfig) => {
       setIsSubmitting(true);
+      setActionError(null);
+      let rollbackData = null;
+
+      // Optimistically update schedule in local state
+      setDeviceData((prev) => {
+        if (!prev) return prev;
+        rollbackData = prev;
+        return {
+          ...prev,
+          schedule: {
+            ...prev.schedule,
+            ...scheduleConfig,
+          },
+          commands: {
+            ...prev.commands,
+            autoMode: scheduleConfig.enabled,
+            scheduledOn: scheduleConfig.onTime,
+            scheduledOff: scheduleConfig.offTime,
+          },
+        };
+      });
+
       try {
         await updateScheduleConfig(deviceId, scheduleConfig, forceSimulation);
       } catch (err) {
+        if (rollbackData) {
+          setDeviceData(rollbackData);
+        }
         setActionError(err.message || "Failed to update schedule");
+        throw err;
       } finally {
         setIsSubmitting(false);
       }

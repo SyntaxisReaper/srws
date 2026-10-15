@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -81,7 +81,24 @@ export default function SchedulerPanel({
   const [onTime, setOnTime] = useState(initialOn);
   const [offTime, setOffTime] = useState(initialOff);
   const [activeDays, setActiveDays] = useState(initialDays);
-  const [selectedPreset, setSelectedPreset] = useState("morning");
+  const [isDirty, setIsDirty] = useState(false);
+
+  const lastSyncedRef = useRef({
+    onTime: initialOn,
+    offTime: initialOff,
+    enabled: initialEnabled,
+    days: JSON.stringify(initialDays),
+  });
+
+  // Calculate matching preset dynamically from current onTime and offTime
+  const selectedPreset =
+    onTime === "06:00" && offTime === "06:30"
+      ? "morning"
+      : onTime === "13:30" && offTime === "13:50"
+      ? "afternoon"
+      : onTime === "18:00" && offTime === "18:30"
+      ? "evening"
+      : "custom";
 
   // Time Picker Modal State
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -90,16 +107,32 @@ export default function SchedulerPanel({
   const [tempMin, setTempMin] = useState(0);
   const [tempPeriod, setTempPeriod] = useState("AM");
 
-  // Sync state if props change from external updates
+  // Sync state if props change from external updates, but NEVER overwrite if user is actively editing
   useEffect(() => {
-    if (schedule?.onTime) setOnTime(schedule.onTime);
-    if (schedule?.offTime) setOffTime(schedule.offTime);
-    if (typeof schedule?.enabled === "boolean") setIsAuto(schedule.enabled);
-    if (Array.isArray(schedule?.days)) setActiveDays(schedule.days);
-  }, [schedule]);
+    if (!schedule) return;
+    const sOn = schedule.onTime || scheduledOn || "06:00";
+    const sOff = schedule.offTime || scheduledOff || "06:30";
+    const sEnabled = schedule.enabled ?? (autoMode !== false);
+    const sDays = JSON.stringify(schedule.days || days || []);
+
+    const hasServerChanged =
+      sOn !== lastSyncedRef.current.onTime ||
+      sOff !== lastSyncedRef.current.offTime ||
+      sEnabled !== lastSyncedRef.current.enabled ||
+      sDays !== lastSyncedRef.current.days;
+
+    if (hasServerChanged && !isDirty) {
+      setOnTime(sOn);
+      setOffTime(sOff);
+      setIsAuto(sEnabled);
+      if (Array.isArray(schedule.days)) setActiveDays(schedule.days);
+      lastSyncedRef.current = { onTime: sOn, offTime: sOff, enabled: sEnabled, days: sDays };
+    }
+  }, [schedule, isDirty, scheduledOn, scheduledOff, autoMode, days]);
 
   const toggleDay = (dayId) => {
     hapticFeedback.light();
+    setIsDirty(true);
     if (activeDays.includes(dayId)) {
       if (activeDays.length > 1) {
         setActiveDays(activeDays.filter((d) => d !== dayId));
@@ -111,12 +144,13 @@ export default function SchedulerPanel({
 
   const handleToggleAuto = (val) => {
     hapticFeedback.light();
+    setIsDirty(true);
     setIsAuto(val);
   };
 
   const handleApplyPreset = (preset) => {
     hapticFeedback.light();
-    setSelectedPreset(preset);
+    setIsDirty(true);
     if (preset === "morning") {
       setOnTime("06:00");
       setOffTime("06:30");
@@ -142,13 +176,12 @@ export default function SchedulerPanel({
 
   const confirmTimePicker = () => {
     hapticFeedback.light();
+    setIsDirty(true);
     const formatted24 = toTimeString24(tempHour, tempMin, tempPeriod);
     if (pickerTarget === "ON") {
       setOnTime(formatted24);
-      setSelectedPreset("custom");
     } else {
       setOffTime(formatted24);
-      setSelectedPreset("custom");
     }
     setPickerVisible(false);
   };
@@ -175,6 +208,13 @@ export default function SchedulerPanel({
       return;
     }
     hapticFeedback.success();
+    setIsDirty(false);
+    lastSyncedRef.current = {
+      onTime,
+      offTime,
+      enabled: isAuto,
+      days: JSON.stringify(activeDays),
+    };
     onSaveSchedule({
       enabled: isAuto,
       onTime,
@@ -373,13 +413,21 @@ export default function SchedulerPanel({
 
       {/* Save Settings Button - Solid Black with White text */}
       <TouchableOpacity
-        style={[styles.saveBtn, !isOnline && styles.saveBtnDisabled]}
+        style={[
+          styles.saveBtn,
+          !isOnline && styles.saveBtnDisabled,
+          isDirty && styles.saveBtnDirty,
+        ]}
         onPress={handleSave}
         disabled={!isOnline}
         activeOpacity={0.85}
       >
         <Text style={styles.saveBtnText}>
-          {!isOnline ? "⚠️ DEVICE OFFLINE • CONTROLS LOCKED" : "✓ SAVE SCHEDULE & REFILL RULES"}
+          {!isOnline
+            ? "⚠️ DEVICE OFFLINE • CONTROLS LOCKED"
+            : isDirty
+            ? "⚡ SAVE NEW SCHEDULE & REFILL RULES"
+            : "✓ SCHEDULE SAVED & SYNCED"}
         </Text>
       </TouchableOpacity>
 
@@ -831,6 +879,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 3,
+  },
+  saveBtnDirty: {
+    backgroundColor: "#0EA5E9",
   },
   saveBtnDisabled: {
     opacity: 0.45,
