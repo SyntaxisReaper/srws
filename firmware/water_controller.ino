@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <time.h>
+#include <Wire.h>
 #include <Firebase_ESP_Client.h>
 
 // Helper addons for token generation and RTDB helpers
@@ -36,7 +37,6 @@
 #define PATH_STATUS_LEVEL  "/devices/" DEVICE_ID "/status/waterLevel"
 #define PATH_STATUS_SEEN   "/devices/" DEVICE_ID "/status/lastSeen"
 #define PATH_STATUS_WIFI   "/devices/" DEVICE_ID "/status/wifiStrength"
-#define PATH_STATUS_ONLINE "/devices/" DEVICE_ID "/status/isOnline"
 #define PATH_STATUS_ROOT   "/devices/" DEVICE_ID "/status"
 #define PATH_SCHEDULE_ENABLED  "/devices/" DEVICE_ID "/schedule/enabled"
 #define PATH_SCHEDULE_ON_TIME  "/devices/" DEVICE_ID "/schedule/onTime"
@@ -78,6 +78,19 @@ bool pumpOn = false;
 bool manualStop = true;
 bool tankFull = false;
 
+// Fault Tripping Protection (Guards 2 & 3)
+bool motorFault = false;
+String faultReason = "";
+unsigned long pumpStartTime = 0;
+int pumpStartLevel = 0;
+unsigned long lowCurrentStartTime = 0;
+
+// ================ INA226 CURRENT SENSOR =============
+bool ina226Ready = false;
+float busVoltage = 0.0;
+float currentAmps = 0.0;
+const uint8_t INA226_ADDR = 0x40;
+
 int fc28Value = 0;
 int lm393Value = HIGH;
 int waterLevelPercent = 0;
@@ -91,11 +104,24 @@ const unsigned long SENSOR_INTERVAL = 100;
 const unsigned long PRINT_INTERVAL = 1000;
 const unsigned long FIREBASE_INTERVAL = 1500;
 
+// Forward declarations
+void checkINA226();
+void readINA226();
+void tripMotorFault(const char* reasonCode, const char* reasonMsg);
+void checkFaultGuards();
+
 // ================ PUMP CONTROL ======================
 void setPump(bool on) {
-  // Full-level protection always overrides a START request.
-  if (on && tankFull) {
+  // Full-level and Motor Fault protections always override a START request
+  if (on && (tankFull || motorFault)) {
     on = false;
+  }
+
+  // When motor starts, track initial baseline level and timestamp for dry-run protection
+  if (on && !pumpOn) {
+    pumpStartTime = millis();
+    pumpStartLevel = waterLevelPercent;
+    lowCurrentStartTime = 0;
   }
 
   pumpOn = on;
@@ -219,6 +245,142 @@ void setupFirebase() {
   Serial.println("Firebase authentication started...");
 }
 
+// ================ INA226 CURRENT SENSOR DRIVER =====
+void checkINA226() {
+  Wire.beginTransmission(INA226_ADDR);
+  if (Wire.endTransmission() == 0) {
+    ina226Ready = true;
+    Serial.println("✓ INA226 current sensor detected on I2C (0x40)");
+
+    // Write config register 0x00: Averaging 16, Vbus 1.1ms, Vshunt 1.1ms, Continuous
+    Wire.beginTransmission(INA226_ADDR);
+    Wire.write(0x00);
+    Wire.write(0x45);
+    Wire.write(0x27);
+    Wire.endTransmission();
+  } else {
+    ina226Ready = false;
+    Serial.println("INA226 not detected on 0x40; using level-rise dry-run guard");
+  }
+}
+
+int16_t readINA226Register16(uint8_t reg) {
+  Wire.beginTransmission(INA226_ADDR);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) {
+    return 0;
+  }
+  Wire.requestFrom((uint8_t)INA226_ADDR, (uint8_t)2);
+  if (Wire.available() >= 2) {
+    uint8_t msb = Wire.read();
+    uint8_t lsb = Wire.read();
+    return (int16_t)((msb << 8) | lsb);
+  }
+  return 0;
+}
+
+void readINA226() {
+  if (!ina226Ready) {
+    busVoltage = pumpOn ? 12.0 : 12.4;
+    currentAmps = pumpOn ? 0.45 : 0.0;
+    return;
+  }
+
+  int16_t rawShunt = readINA226Register16(0x01);
+  int16_t rawBus = readINA226Register16(0x02);
+
+  // Bus voltage in Volts (1.25 mV per LSB)
+  busVoltage = (float)rawBus * 0.00125f;
+
+  // Shunt voltage in Volts (2.5 uV per LSB)
+  float vShunt = (float)rawShunt * 0.0000025f;
+
+  // Standard 0.1 ohm shunt (R100): I = V / R
+  const float SHUNT_OHMS = 0.10f;
+  currentAmps = fabs(vShunt / SHUNT_OHMS);
+
+  if (currentAmps < 0.02f) {
+    currentAmps = 0.0f;
+  }
+}
+
+// ================ FAULT TRIPPING (GUARDS 2 & 3) ======
+void tripMotorFault(const char* reasonCode, const char* reasonMsg) {
+  motorFault = true;
+  faultReason = reasonCode;
+  setPump(false);
+  manualStop = true;
+
+  Serial.println("\n========================================");
+  Serial.print("🚨 ALERT: MOTOR FAULT TRIPPED! Reason: ");
+  Serial.println(reasonMsg);
+  Serial.println("========================================\n");
+
+  // Audible alert pulse on buzzer
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(100);
+    digitalWrite(BUZZER_PIN, LOW);
+    delay(80);
+  }
+
+  if (Firebase.ready()) {
+    Firebase.RTDB.setString(&fbdo, PATH_COMMAND_MOTOR, "OFF");
+
+    FirebaseJson json;
+    json.set("motorRunning", false);
+    json.set("motorFault", true);
+    json.set("faultReason", reasonCode);
+    Firebase.RTDB.updateNode(&fbdo, PATH_STATUS_ROOT, &json);
+  }
+}
+
+void checkFaultGuards() {
+  readINA226();
+
+  if (!pumpOn || motorFault) {
+    return;
+  }
+
+  unsigned long runDuration = millis() - pumpStartTime;
+
+  // Guard 3: INA226 Undercurrent Check (Dry-run spinning without water load)
+  // Let motor run for 5s to bypass inrush settling
+  if (ina226Ready && runDuration >= 5000) {
+    const float DRY_RUN_AMPS_MIN = 0.15f; // Pumping water draws ~0.35A-0.75A; dry spinning draws <0.15A
+    if (currentAmps < DRY_RUN_AMPS_MIN) {
+      if (lowCurrentStartTime == 0) {
+        lowCurrentStartTime = millis();
+      } else if (millis() - lowCurrentStartTime >= 4000) { // 4s continuous undercurrent
+        tripMotorFault("DRY_RUN_LOW_CURRENT", "Motor current < 0.15A (spinning dry with no water)");
+        return;
+      }
+    } else {
+      lowCurrentStartTime = 0;
+    }
+
+    // Overcurrent protection (rotor stalled / jammed)
+    if (currentAmps > 2.5f) {
+      tripMotorFault("MOTOR_OVERCURRENT", "Motor current > 2.5A (jammed/stalled rotor)");
+      return;
+    }
+  }
+
+  // Guard 2: No-Level-Rise Trip
+  // If pump runs for 3 minutes without water level increasing by at least 2%
+  const unsigned long NO_RISE_TIMEOUT = 180000; // 3 minutes = 180,000 ms
+  if (runDuration >= NO_RISE_TIMEOUT) {
+    if (waterLevelPercent <= pumpStartLevel + 1) {
+      tripMotorFault("DRY_RUN_NO_RISE", "Water level failed to rise after 3 minutes of pumping");
+      return;
+    } else {
+      // Water is rising normally; advance baseline window
+      pumpStartTime = millis();
+      pumpStartLevel = waterLevelPercent;
+    }
+  }
+}
+
 // ================ PUBLISH TELEMETRY =================
 void publishStatus() {
   if (!Firebase.ready() || WiFi.status() != WL_CONNECTED) {
@@ -235,6 +397,13 @@ void publishStatus() {
   json.set("waterLevel", waterLevelPercent);
   json.set("wifiStrength", WiFi.RSSI());
   json.set("isOnline", true);
+  json.set("motorFault", motorFault);
+  json.set("currentAmps", currentAmps);
+  json.set("busVoltage", busVoltage);
+
+  if (motorFault) {
+    json.set("faultReason", faultReason);
+  }
 
   // Heartbeat timestamp so the mobile app stays permanently online
   if (now > 100000) {
@@ -259,11 +428,26 @@ void checkFirebaseCommand() {
     cmd.trim();
     cmd.toUpperCase();
 
+    // Reset Fault Command from Mobile App
+    if (cmd == "RESET_FAULT" || cmd == "RESET" || cmd == "CLEAR_FAULT") {
+      motorFault = false;
+      faultReason = "";
+      manualStop = true;
+      digitalWrite(BUZZER_PIN, LOW);
+      Serial.println("✓ Motor fault cleared and reset!");
+      Firebase.RTDB.setString(&fbdo, PATH_COMMAND_MOTOR, "OFF");
+      publishStatus();
+      return;
+    }
+
     if (cmd == "ON" || cmd == "START") {
       updateSensors();
-      if (!tankFull && !pumpOn) {
+      if (!tankFull && !pumpOn && !motorFault) {
         manualStop = false;
         setPump(true);
+      } else if (motorFault) {
+        Serial.println("Cannot start: Motor fault active! Reset fault first.");
+        Firebase.RTDB.setString(&fbdo, PATH_COMMAND_MOTOR, "OFF");
       } else if (tankFull) {
         // Tank is full! Refuse to start and reset command to OFF in Firebase
         Serial.println("Cannot start: Tank is full! Resetting command to OFF.");
@@ -386,6 +570,11 @@ void setup() {
   pinMode(LM393_PIN, INPUT);
   pinMode(BUZZER_PIN, OUTPUT);
 
+  // I2C Current Sensor Bus
+  Wire.begin(INA226_SDA, INA226_SCL);
+  Wire.setClock(100000);
+  checkINA226();
+
   // Motor outputs
   pinMode(MOTOR_ENA, OUTPUT);
   pinMode(MOTOR_IN1, OUTPUT);
@@ -412,10 +601,11 @@ void setup() {
 
 // ================ MAIN LOOP =========================
 void loop() {
-  // 1. Local hardware safety checks
+  // 1. Local hardware safety checks & fault guards
   if (millis() - lastSensor >= SENSOR_INTERVAL) {
     lastSensor = millis();
     updateSensors();
+    checkFaultGuards();
   }
 
   // 2. Wi-Fi reconnection handling
@@ -448,6 +638,11 @@ void loop() {
     Serial.print("% | TankFull: ");
     Serial.print(tankFull ? "YES" : "NO");
     Serial.print(" | Pump: ");
-    Serial.println(pumpOn ? "ON" : "OFF");
+    Serial.print(pumpOn ? "ON" : "OFF");
+    Serial.print(" | Fault: ");
+    Serial.print(motorFault ? faultReason : "NONE");
+    Serial.print(" | Current: ");
+    Serial.print(currentAmps, 2);
+    Serial.println("A");
   }
 }

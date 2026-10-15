@@ -138,7 +138,10 @@ export default function MotorControl({
             </Text>
             <TouchableOpacity
               style={styles.resetBtn}
-              onPress={() => onSimulateFault(false)}
+              onPress={() => {
+                hapticFeedback.success();
+                onSimulateFault(false);
+              }}
               activeOpacity={0.8}
             >
               <Text style={styles.resetBtnText}>Reset Pump</Text>

@@ -7,6 +7,7 @@ import {
   subscribeToDeviceState,
   sendMotorCommand,
   sendValveCommand,
+  resetFault,
   triggerSimulatedFault,
   setContactProbeLevel,
   updateScheduleConfig,
@@ -140,9 +141,36 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
     [deviceId, forceSimulation]
   );
 
-  const simulateFault = useCallback((active) => {
-    triggerSimulatedFault(active);
-  }, []);
+  const simulateFault = useCallback(
+    async (active) => {
+      if (forceSimulation) {
+        triggerSimulatedFault(active);
+      } else {
+        if (!active) {
+          // Live hardware reset
+          setDeviceData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: {
+                    ...prev.status,
+                    motorFault: false,
+                  },
+                }
+              : prev
+          );
+          try {
+            await resetFault(deviceId, false);
+          } catch (err) {
+            console.warn("[useDeviceStatus] Failed to reset fault on live device:", err);
+          }
+        } else {
+          triggerSimulatedFault(true);
+        }
+      }
+    },
+    [deviceId, forceSimulation]
+  );
 
   const changeWaterLevel = useCallback((level) => {
     setContactProbeLevel(level);
