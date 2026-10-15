@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from "react-native";
+import { hapticFeedback } from "../utils/haptics";
 
 export default function WaterLevelGauge({
   waterLevel = 60,
@@ -16,6 +17,55 @@ export default function WaterLevelGauge({
 }) {
   const [showSimControls, setShowSimControls] = useState(false);
   const liters = Math.round((waterLevel / 100) * capacityLiters);
+
+  // Smooth animated level transition (2D)
+  const animatedLevel = useRef(new Animated.Value(waterLevel)).current;
+  const waveAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(animatedLevel, {
+      toValue: Math.min(100, Math.max(0, waterLevel)),
+      duration: 650,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [waterLevel]);
+
+  // Wave ripple animation while refilling
+  useEffect(() => {
+    if (motorRunning || valveOpen) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(waveAnim, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(waveAnim, {
+            toValue: 0,
+            duration: 1200,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      waveAnim.setValue(0);
+    }
+  }, [motorRunning, valveOpen]);
+
+  const heightInterpolate = animatedLevel.interpolate({
+    inputRange: [0, 100],
+    outputRange: ["0%", "100%"],
+  });
+
+  const waveTranslateY = waveAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -3],
+  });
 
   let statusLabel = "Normal Level";
   let statusBadgeBg = "#F0FDF4";
@@ -103,18 +153,25 @@ export default function WaterLevelGauge({
               </View>
             </View>
 
-            {/* Fluid with wave crest */}
-            <View
+            {/* Fluid with animated smooth transition and wave crest */}
+            <Animated.View
               style={[
                 styles.fluidFill,
                 {
-                  height: `${Math.min(100, Math.max(0, waterLevel))}%`,
+                  height: heightInterpolate,
                   backgroundColor: waterColor,
                 },
               ]}
             >
-              <View style={styles.fluidSurface} />
-            </View>
+              <Animated.View
+                style={[
+                  styles.fluidSurface,
+                  {
+                    transform: [{ translateY: waveTranslateY }],
+                  },
+                ]}
+              />
+            </Animated.View>
           </View>
 
           {/* Sturdy Tank Stand Base */}
@@ -215,28 +272,40 @@ export default function WaterLevelGauge({
             <View style={styles.calibrationButtons}>
               <TouchableOpacity
                 style={styles.calBtn}
-                onPress={() => onLevelAdjust("EMPTY")}
+                onPress={() => {
+                  hapticFeedback.light();
+                  onLevelAdjust("EMPTY");
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={styles.calBtnText}>Empty</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.calBtn}
-                onPress={() => onLevelAdjust("LOW")}
+                onPress={() => {
+                  hapticFeedback.light();
+                  onLevelAdjust("LOW");
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={styles.calBtnText}>Low 25%</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.calBtn}
-                onPress={() => onLevelAdjust("MEDIUM")}
+                onPress={() => {
+                  hapticFeedback.light();
+                  onLevelAdjust("MEDIUM");
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={styles.calBtnText}>Mid 60%</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.calBtn}
-                onPress={() => onLevelAdjust("FULL")}
+                onPress={() => {
+                  hapticFeedback.light();
+                  onLevelAdjust("FULL");
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={styles.calBtnText}>Full 100%</Text>

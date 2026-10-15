@@ -37,6 +37,7 @@
 #define PATH_STATUS_SEEN   "/devices/" DEVICE_ID "/status/lastSeen"
 #define PATH_STATUS_WIFI   "/devices/" DEVICE_ID "/status/wifiStrength"
 #define PATH_STATUS_ONLINE "/devices/" DEVICE_ID "/status/isOnline"
+#define PATH_STATUS_ROOT   "/devices/" DEVICE_ID "/status"
 #define PATH_SCHEDULE_ENABLED  "/devices/" DEVICE_ID "/schedule/enabled"
 #define PATH_SCHEDULE_ON_TIME  "/devices/" DEVICE_ID "/schedule/onTime"
 #define PATH_SCHEDULE_OFF_TIME "/devices/" DEVICE_ID "/schedule/offTime"
@@ -116,16 +117,39 @@ void setPump(bool on) {
 // ================ SENSOR READING ====================
 void updateSensors() {
   lm393Value = digitalRead(LM393_PIN);
+  bool rawFull = FULL_LEVEL_ACTIVE_LOW
+                 ? (lm393Value == LOW)
+                 : (lm393Value == HIGH);
 
-  tankFull = FULL_LEVEL_ACTIVE_LOW
-             ? (lm393Value == LOW)
-             : (lm393Value == HIGH);
+  // Splash debounce: require 1000ms continuous submerged contact before confirming tank-full
+  static unsigned long fullDetectionStart = 0;
+  const unsigned long FULL_DEBOUNCE_MS = 1000;
+
+  if (rawFull) {
+    if (fullDetectionStart == 0) {
+      fullDetectionStart = millis();
+    } else if (millis() - fullDetectionStart >= FULL_DEBOUNCE_MS) {
+      tankFull = true;
+    }
+  } else {
+    fullDetectionStart = 0;
+    tankFull = false;
+  }
 
   fc28Value = analogRead(FC28_PIN);
 
   // Map analog sensor to estimated water level percentage (0-100%)
-  waterLevelPercent = map(fc28Value, 4095, 1200, 0, 100);
-  waterLevelPercent = constrain(waterLevelPercent, 0, 100);
+  int rawPercent = map(fc28Value, 4095, 1200, 0, 100);
+  rawPercent = constrain(rawPercent, 0, 100);
+
+  // Exponential Moving Average (EMA) smoothing filter to eliminate ADC fluctuations
+  static float smoothedLevelPercent = -1.0;
+  if (smoothedLevelPercent < 0) {
+    smoothedLevelPercent = rawPercent;
+  } else {
+    smoothedLevelPercent = (smoothedLevelPercent * 0.85f) + (rawPercent * 0.15f);
+  }
+  waterLevelPercent = round(smoothedLevelPercent);
 
   // Full-level cutoff always takes priority
   if (tankFull && pumpOn) {
@@ -204,19 +228,20 @@ void publishStatus() {
   time_t now = time(nullptr);
   double epochMs = (double)now * 1000.0;
 
-  bool ok = true;
-  ok &= Firebase.RTDB.setBool(&fbdo, PATH_STATUS_PUMP, pumpOn);
-  ok &= Firebase.RTDB.setBool(&fbdo, PATH_STATUS_FULL, tankFull);
-  ok &= Firebase.RTDB.setInt(&fbdo, PATH_STATUS_LEVEL, waterLevelPercent);
-  ok &= Firebase.RTDB.setInt(&fbdo, PATH_STATUS_WIFI, WiFi.RSSI());
-  ok &= Firebase.RTDB.setBool(&fbdo, PATH_STATUS_ONLINE, true);
+  // Atomic RTDB update using FirebaseJson to minimize network round-trips and loop blocking
+  FirebaseJson json;
+  json.set("motorRunning", pumpOn);
+  json.set("probeTop", tankFull);
+  json.set("waterLevel", waterLevelPercent);
+  json.set("wifiStrength", WiFi.RSSI());
+  json.set("isOnline", true);
 
   // Heartbeat timestamp so the mobile app stays permanently online
   if (now > 100000) {
-    ok &= Firebase.RTDB.setDouble(&fbdo, PATH_STATUS_SEEN, epochMs);
+    json.set("lastSeen", epochMs);
   }
 
-  if (!ok) {
+  if (!Firebase.RTDB.updateNode(&fbdo, PATH_STATUS_ROOT, &json)) {
     Serial.print("Firebase write notice: ");
     Serial.println(fbdo.errorReason());
   }

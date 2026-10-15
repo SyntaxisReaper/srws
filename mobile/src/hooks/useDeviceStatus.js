@@ -38,9 +38,33 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
     async (targetCommand, manualOverride = false) => {
       setIsSubmitting(true);
       setActionError(null);
+
+      // Optimistic state update: immediate UI toggle
+      let rollbackData = null;
+      setDeviceData((prev) => {
+        if (!prev) return prev;
+        rollbackData = prev;
+        const isRunning = targetCommand === "ON";
+        return {
+          ...prev,
+          status: {
+            ...prev.status,
+            motorRunning: isRunning,
+            relayState: targetCommand,
+          },
+          commands: {
+            ...prev.commands,
+            motorCommand: targetCommand,
+          },
+        };
+      });
+
       try {
         await sendMotorCommand(deviceId, targetCommand, forceSimulation, manualOverride);
       } catch (err) {
+        if (rollbackData) {
+          setDeviceData(rollbackData);
+        }
         setActionError(err.message || "Failed to send motor command");
       } finally {
         setIsSubmitting(false);
@@ -53,9 +77,31 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
     async (targetCommand, manualOverride = false) => {
       setIsSubmitting(true);
       setActionError(null);
+
+      // Optimistic state update: immediate UI toggle
+      let rollbackData = null;
+      setDeviceData((prev) => {
+        if (!prev) return prev;
+        rollbackData = prev;
+        return {
+          ...prev,
+          status: {
+            ...prev.status,
+            valveState: targetCommand,
+          },
+          commands: {
+            ...prev.commands,
+            valveCommand: targetCommand,
+          },
+        };
+      });
+
       try {
         await sendValveCommand(deviceId, targetCommand, forceSimulation, manualOverride);
       } catch (err) {
+        if (rollbackData) {
+          setDeviceData(rollbackData);
+        }
         setActionError(err.message || "Failed to send valve command");
       } finally {
         setIsSubmitting(false);
@@ -67,9 +113,25 @@ export function useDeviceStatus(deviceId = DEFAULT_DEVICE_ID, forceSimulation = 
   const setManualOverrideMode = useCallback(
     async (enabled) => {
       setIsSubmitting(true);
+      let rollbackData = null;
+      setDeviceData((prev) => {
+        if (!prev) return prev;
+        rollbackData = prev;
+        return {
+          ...prev,
+          commands: {
+            ...prev.commands,
+            manualOverride: enabled,
+          },
+        };
+      });
+
       try {
         await apiSetManualOverride(deviceId, enabled, forceSimulation);
       } catch (err) {
+        if (rollbackData) {
+          setDeviceData(rollbackData);
+        }
         setActionError(err.message || "Failed to update manual override mode");
       } finally {
         setIsSubmitting(false);

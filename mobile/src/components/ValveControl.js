@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import { hapticFeedback } from "../utils/haptics";
 
 export default function ValveControl({
   valveState = "CLOSED",
@@ -16,7 +17,11 @@ export default function ValveControl({
   const isBlocked = !manualOverride && isFull;
 
   const handlePress = () => {
-    if (isSubmitting || !isOnline) return;
+    if (isSubmitting || !isOnline) {
+      hapticFeedback.warning();
+      return;
+    }
+    hapticFeedback.medium();
     const nextCommand = isOpen ? "CLOSED" : "OPEN";
     onToggleValve(nextCommand, manualOverride);
   };

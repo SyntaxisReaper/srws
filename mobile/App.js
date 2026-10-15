@@ -35,6 +35,7 @@ import {
   registerForPushNotificationsAsync,
   triggerNativeAlert,
 } from "./src/services/notificationService";
+import { hapticFeedback } from "./src/utils/haptics";
 
 export default function App() {
   const [currentDeviceId, setCurrentDeviceId] = useState(DEFAULT_DEVICE_ID);
@@ -86,9 +87,11 @@ export default function App() {
 
   const handleToggleMotor = (nextCmd, override = false) => {
     if (!isOnline) {
+      hapticFeedback.warning();
       showToast("⚠️ Device Offline: Controls locked");
       return;
     }
+    hapticFeedback.medium();
     const isOverrideActive = override || commands.manualOverride === true;
     toggleMotor(nextCmd, isOverrideActive);
     showToast(
@@ -102,9 +105,11 @@ export default function App() {
 
   const handleToggleValve = (nextCmd, override = false) => {
     if (!isOnline) {
+      hapticFeedback.warning();
       showToast("⚠️ Device Offline: Controls locked");
       return;
     }
+    hapticFeedback.medium();
     const isOverrideActive = override || commands.manualOverride === true;
     toggleValve(nextCmd, isOverrideActive);
     showToast(
@@ -118,9 +123,11 @@ export default function App() {
 
   const handleToggleManualOverride = (enabled) => {
     if (!isOnline) {
+      hapticFeedback.warning();
       showToast("⚠️ Device Offline: Controls locked");
       return;
     }
+    hapticFeedback.heavy();
     setManualOverride(enabled);
     showToast(
       enabled
@@ -131,9 +138,11 @@ export default function App() {
 
   const handleSaveSchedule = (scheduleData) => {
     if (!isOnline) {
+      hapticFeedback.warning();
       showToast("⚠️ Device Offline: Controls locked");
       return;
     }
+    hapticFeedback.success();
     saveSchedule(scheduleData);
     showToast("✓ Schedule updated successfully");
   };
@@ -534,7 +543,10 @@ export default function App() {
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={[styles.navItem, activeTab === "overview" && styles.navItemActive]}
-          onPress={() => setActiveTab("overview")}
+          onPress={() => {
+            hapticFeedback.light();
+            setActiveTab("overview");
+          }}
           activeOpacity={0.8}
         >
           <Text style={styles.navIcon}>💧</Text>
@@ -548,7 +560,10 @@ export default function App() {
 
         <TouchableOpacity
           style={[styles.navItem, activeTab === "automation" && styles.navItemActive]}
-          onPress={() => setActiveTab("automation")}
+          onPress={() => {
+            hapticFeedback.light();
+            setActiveTab("automation");
+          }}
           activeOpacity={0.8}
         >
           <Text style={styles.navIcon}>⏰</Text>
@@ -559,7 +574,10 @@ export default function App() {
 
         <TouchableOpacity
           style={[styles.navItem, activeTab === "activity" && styles.navItemActive]}
-          onPress={() => setActiveTab("activity")}
+          onPress={() => {
+            hapticFeedback.light();
+            setActiveTab("activity");
+          }}
           activeOpacity={0.8}
         >
           <Text style={styles.navIcon}>📊</Text>

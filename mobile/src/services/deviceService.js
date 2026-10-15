@@ -4,6 +4,7 @@
  * Includes Remote Valve Control (GPIO 27) and Network Uplink Failover status.
  */
 
+import { AppState } from "react-native";
 import { firebaseConfig, isFirebaseConfigured, DEFAULT_DEVICE_ID } from "./firebaseConfig";
 
 // Initial mock state matching the updated hardware schema
@@ -84,6 +85,8 @@ let simulatedDeviceState = {
 };
 
 const stateListeners = new Set();
+const liveStateListeners = new Set();
+let lastLiveState = null;
 
 export const subscribeToDeviceState = (deviceId, callback, useSimulation = false) => {
   if (useSimulation || !isFirebaseConfigured()) {
@@ -143,6 +146,7 @@ export const subscribeToDeviceState = (deviceId, callback, useSimulation = false
                   : "MEDIUM"),
             },
           };
+          lastLiveState = normalized;
           callback(normalized);
         }
       }
@@ -152,12 +156,44 @@ export const subscribeToDeviceState = (deviceId, callback, useSimulation = false
     }
   };
 
+  liveStateListeners.add(callback);
+
+  let intervalId = null;
+
+  const startPolling = () => {
+    if (!intervalId && isActive) {
+      intervalId = setInterval(fetchLiveState, 2000);
+    }
+  };
+
+  const stopPolling = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
+
   fetchLiveState();
-  const intervalId = setInterval(fetchLiveState, 2000);
+  startPolling();
+
+  const handleAppStateChange = (nextAppState) => {
+    if (nextAppState === "active") {
+      fetchLiveState();
+      startPolling();
+    } else if (nextAppState.match(/inactive|background/)) {
+      stopPolling();
+    }
+  };
+
+  const appStateSubscription = AppState.addEventListener("change", handleAppStateChange);
 
   return () => {
     isActive = false;
-    clearInterval(intervalId);
+    stopPolling();
+    liveStateListeners.delete(callback);
+    if (appStateSubscription && appStateSubscription.remove) {
+      appStateSubscription.remove();
+    }
   };
 };
 
@@ -208,6 +244,30 @@ export const sendMotorCommand = async (deviceId, command, useSimulation = false,
     return true;
   }
 
+  // Optimistic UI broadcast for live device
+  const previousLiveState = lastLiveState;
+  if (lastLiveState) {
+    const isRunning = command === "ON";
+    lastLiveState = {
+      ...lastLiveState,
+      status: {
+        ...lastLiveState.status,
+        motorRunning: isRunning,
+        relayState: command,
+      },
+      commands: {
+        ...lastLiveState.commands,
+        motorCommand: command,
+        manualOverride: manualOverride || lastLiveState.commands?.manualOverride || false,
+      },
+    };
+    liveStateListeners.forEach((listener) => {
+      try {
+        listener(lastLiveState);
+      } catch (_) {}
+    });
+  }
+
   const motorUrl = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands/motorCommand.json`;
   const response = await fetch(motorUrl, {
     method: "PUT",
@@ -216,6 +276,15 @@ export const sendMotorCommand = async (deviceId, command, useSimulation = false,
   });
 
   if (!response.ok) {
+    // Revert optimistic broadcast on failure
+    if (previousLiveState) {
+      lastLiveState = previousLiveState;
+      liveStateListeners.forEach((listener) => {
+        try {
+          listener(lastLiveState);
+        } catch (_) {}
+      });
+    }
     throw new Error(`Failed to send motor command to Firebase: ${response.statusText}`);
   }
 
@@ -271,6 +340,28 @@ export const sendValveCommand = async (deviceId, command, useSimulation = false,
     return true;
   }
 
+  // Optimistic UI broadcast for live device
+  const previousLiveState = lastLiveState;
+  if (lastLiveState) {
+    lastLiveState = {
+      ...lastLiveState,
+      status: {
+        ...lastLiveState.status,
+        valveState: command,
+      },
+      commands: {
+        ...lastLiveState.commands,
+        valveCommand: command,
+        manualOverride: manualOverride || lastLiveState.commands?.manualOverride || false,
+      },
+    };
+    liveStateListeners.forEach((listener) => {
+      try {
+        listener(lastLiveState);
+      } catch (_) {}
+    });
+  }
+
   const url = `${firebaseConfig.databaseURL}/devices/${targetDevice}/commands/valveCommand.json`;
   const response = await fetch(url, {
     method: "PUT",
@@ -279,6 +370,15 @@ export const sendValveCommand = async (deviceId, command, useSimulation = false,
   });
 
   if (!response.ok) {
+    // Revert optimistic broadcast on failure
+    if (previousLiveState) {
+      lastLiveState = previousLiveState;
+      liveStateListeners.forEach((listener) => {
+        try {
+          listener(lastLiveState);
+        } catch (_) {}
+      });
+    }
     throw new Error(`Failed to send valve command to Firebase: ${response.statusText}`);
   }
 

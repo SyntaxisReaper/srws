@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import { hapticFeedback } from "../utils/haptics";
 
 export default function MotorControl({
   motorRunning = false,
@@ -58,13 +59,22 @@ export default function MotorControl({
 
   const handlePress = () => {
     if (isSubmitting) return;
+    if (!isOnline) {
+      hapticFeedback.warning();
+      return;
+    }
+    hapticFeedback.medium();
     const nextCommand = motorRunning ? "OFF" : "ON";
     setAutoStopCountdown(null);
     onToggle(nextCommand, manualOverride);
   };
 
   const handleQuickTopUp = (minutes) => {
-    if (isSubmitting || isBlocked || !isOnline) return;
+    if (isSubmitting || isBlocked || !isOnline) {
+      hapticFeedback.warning();
+      return;
+    }
+    hapticFeedback.light();
     setAutoStopCountdown(minutes * 60);
     if (!motorRunning) {
       onToggle("ON", manualOverride);

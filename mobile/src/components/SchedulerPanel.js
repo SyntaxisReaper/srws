@@ -8,6 +8,7 @@ import {
   Modal,
   ScrollView,
 } from "react-native";
+import { hapticFeedback } from "../utils/haptics";
 
 const DAYS_MAP = [
   { id: "mon", short: "M", full: "Mon" },
@@ -98,6 +99,7 @@ export default function SchedulerPanel({
   }, [schedule]);
 
   const toggleDay = (dayId) => {
+    hapticFeedback.light();
     if (activeDays.includes(dayId)) {
       if (activeDays.length > 1) {
         setActiveDays(activeDays.filter((d) => d !== dayId));
@@ -108,10 +110,12 @@ export default function SchedulerPanel({
   };
 
   const handleToggleAuto = (val) => {
+    hapticFeedback.light();
     setIsAuto(val);
   };
 
   const handleApplyPreset = (preset) => {
+    hapticFeedback.light();
     setSelectedPreset(preset);
     if (preset === "morning") {
       setOnTime("06:00");
@@ -126,6 +130,7 @@ export default function SchedulerPanel({
   };
 
   const openTimePicker = (target) => {
+    hapticFeedback.light();
     setPickerTarget(target);
     const curTime = target === "ON" ? onTime : offTime;
     const parsed = parseTime24(curTime);
@@ -136,6 +141,7 @@ export default function SchedulerPanel({
   };
 
   const confirmTimePicker = () => {
+    hapticFeedback.light();
     const formatted24 = toTimeString24(tempHour, tempMin, tempPeriod);
     if (pickerTarget === "ON") {
       setOnTime(formatted24);
@@ -148,6 +154,7 @@ export default function SchedulerPanel({
   };
 
   const adjustMinutes = (delta) => {
+    hapticFeedback.light();
     let next = tempMin + delta;
     if (next < 0) next += 60;
     if (next >= 60) next -= 60;
@@ -163,7 +170,11 @@ export default function SchedulerPanel({
   const trackWidthPercent = Math.min(Math.max((durationMins / 1440) * 100, 4), 50);
 
   const handleSave = () => {
-    if (!isOnline) return;
+    if (!isOnline) {
+      hapticFeedback.warning();
+      return;
+    }
+    hapticFeedback.success();
     onSaveSchedule({
       enabled: isAuto,
       onTime,
